@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AntiProxy Attendance</title>
+</head>
+
+<body>
+
+<h2>AntiProxy Attendance</h2>
+
+<p>Student: <b>Shreenivas</b></p>
+<p>USN: <b>2BA23CS093</b></p>
+
+<button onclick="getRealLocation()">
+    Verify My Location
+</button>
+
+<pre id="result"></pre>
+
+<script>
+
+function getRealLocation() {
+
+    const result = document.getElementById("result");
+
+    result.textContent = "Getting your real GPS location...";
+
+    if (!navigator.geolocation) {
+        result.textContent =
+            "GPS is not supported by this browser.";
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+
+        function(position) {
+
+            const latitude = position.coords.latitude;
+const longitude = position.coords.longitude;
+const accuracy = position.coords.accuracy;
+
+alert(
+    "Your GPS:\nLatitude: " +
+    latitude +
+    "\nLongitude: " +
+    longitude +
+    "\nAccuracy: " +
+    accuracy + " meters"
+);
+
+            result.textContent =
+                "GPS received!\n" +
+                "Latitude: " + latitude + "\n" +
+                "Longitude: " + longitude + "\n" +
+                "Accuracy: " + accuracy + " meters\n\n" +
+                "Checking campus geofence...";
+
+            fetch("http://127.0.0.1:5000/attendance/location", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    usn: "2BA23CS093",
+                    latitude: latitude,
+                    longitude: longitude,
+                    accuracy: accuracy
+                })
+
+            })
+
+            .then(response => response.json())
+
+            .then(data => {
+
+                if (data.success) {
+
+                    result.textContent =
+                        "✓ LOCATION VERIFIED\n\n" +
+                        "Student: " + data.name + "\n" +
+                        "USN: " + data.usn + "\n" +
+                        "Latitude: " + data.latitude + "\n" +
+                        "Longitude: " + data.longitude + "\n" +
+                        "GPS Accuracy: " + data.accuracy + " meters\n" +
+                        "Distance from college: " +
+                        data.distance + " meters\n" +
+                        "Allowed radius: " +
+                        data.allowed_radius + " meters";
+
+                } else {
+
+                    result.textContent =
+                        "✗ LOCATION NOT VERIFIED\n\n" +
+                        data.message +
+                        "\nDistance: " +
+                        (data.distance ?? "unknown") +
+                        " meters";
+                }
+
+            })
+
+            .catch(error => {
+
+                console.error(error);
+
+                result.textContent =
+                    "Could not connect to Flask server.";
+            });
+        },
+
+        function(error) {
+
+            if (error.code === 1) {
+                result.textContent =
+                    "Location permission denied.\n" +
+                    "Please allow location access.";
+            }
+
+            else if (error.code === 2) {
+                result.textContent =
+                    "GPS location unavailable.";
+            }
+
+            else if (error.code === 3) {
+                result.textContent =
+                    "GPS request timed out.";
+            }
+
+            else {
+                result.textContent =
+                    "Unable to get GPS location.";
+            }
+        },
+
+        {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
+        }
+    );
+}
+
+</script>
+
+</body>
+</html>
