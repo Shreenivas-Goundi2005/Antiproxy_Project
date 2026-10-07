@@ -11224,62 +11224,35 @@ class _AttendancePageState extends State<AttendancePage> {
       // AUTHENTICATION FAILURE
       // ======================================================
 
-      // ======================================================
-// AUTHENTICATION FAILURE
-// ======================================================
+      if (response.statusCode == 401) {
+        if (!mounted) return;
 
-if (response.statusCode == 401) {
-  debugPrint(
-    'ATTENDANCE AUTHENTICATION FAILED: '
-    '${response.body}',
-  );
+        setState(() {
+          _processing = false;
+          _statusMessage = 'Session expired. Please login again.';
+        });
 
-  final prefs = await SharedPreferences.getInstance();
+        await showDialog(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Authentication Required'),
+            content: const Text(
+              'Your login session has expired.\n\n'
+              'Please login again before marking attendance.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
 
-  // Remove only the invalid authentication session.
-  await prefs.remove('auth_token');
-  await prefs.remove('user_role');
-  await prefs.remove('username');
-  await prefs.remove('user_id');
-
-  if (!mounted) return;
-
-  setState(() {
-    _processing = false;
-    _statusMessage =
-        'Your login session is no longer valid. Please login again.';
-  });
-
-  await showDialog(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Login Required'),
-      content: const Text(
-        'Your authentication session is no longer valid.\n\n'
-        'Please login again to continue marking attendance.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.pop(dialogContext);
-          },
-          child: const Text('OK'),
-        ),
-      ],
-    ),
-  );
-
-  if (!mounted) return;
-
-  Navigator.of(context).pushAndRemoveUntil(
-    MaterialPageRoute(
-      builder: (_) => LoginPage(cameras: widget.cameras),
-    ),
-    (route) => false,
-  );
-
-  return;
-}
+        return;
+      }
 
       // ======================================================
       // ATTENDANCE SUCCESS

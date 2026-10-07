@@ -1692,118 +1692,54 @@ class ClassroomGeofencePreview extends StatelessWidget {
     final area = length > 0 && width > 0 ? length * width : 0.0;
 
     return Container(
-      padding: EdgeInsets.all(compact ? 14 : 16),
+      padding: EdgeInsets.all(compact ? 12 : 16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(compact ? 20 : 24),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: .65)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .035),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: .45),
+        borderRadius: BorderRadius.circular(compact ? 18 : 22),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: .7)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: primary.withValues(alpha: .10),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.crop_free_rounded, color: primary),
-              ),
-              const SizedBox(width: 10),
+              Icon(Icons.crop_free_rounded, color: primary),
+              const SizedBox(width: 8),
               const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Classroom geofence',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Rectangular attendance boundary',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                  ],
+                child: Text(
+                  'Rectangular classroom geofence',
+                  style: TextStyle(fontWeight: FontWeight.w800),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 7,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(
                   color: verified
-                      ? Colors.green.withValues(alpha: .10)
-                      : primary.withValues(alpha: .09),
+                      ? Colors.green.withValues(alpha: .12)
+                      : primary.withValues(alpha: .10),
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: verified
-                        ? Colors.green.withValues(alpha: .22)
-                        : primary.withValues(alpha: .18),
-                  ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      verified
-                          ? Icons.verified_rounded
-                          : Icons.visibility_rounded,
-                      size: 14,
-                      color: verified ? Colors.green.shade700 : primary,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      verified ? 'VERIFIED' : 'PREVIEW',
-                      style: TextStyle(
-                        color: verified ? Colors.green.shade700 : primary,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: .4,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  verified ? 'VERIFIED' : 'PREVIEW',
+                  style: TextStyle(
+                    color: verified ? Colors.green.shade700 : primary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: BoxDecoration(
-              color: primary.withValues(alpha: .055),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline_rounded, size: 16, color: primary),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'The faculty position is the classroom centre. Students must stay inside the rectangle.',
-                    style: TextStyle(fontSize: 11, height: 1.3),
-                  ),
-                ),
-              ],
+          const SizedBox(height: 8),
+          Text(
+            'Students must be inside this exact classroom boundary.',
+            style: TextStyle(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontSize: 12,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           SizedBox(
-            height: compact ? 224 : 270,
+            height: compact ? 180 : 220,
             width: double.infinity,
             child: CustomPaint(
               painter: ClassroomGeofencePainter(
@@ -1815,72 +1751,55 @@ class ClassroomGeofencePreview extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Row(
             children: [
               Expanded(
-                child: _metricCard(
+                child: _metric(
                   context,
                   Icons.straighten_rounded,
-                  'LENGTH',
+                  'Length',
                   '${length.toStringAsFixed(1)} m',
                 ),
               ),
-              const SizedBox(width: 8),
               Expanded(
-                child: _metricCard(
+                child: _metric(
                   context,
                   Icons.width_normal_rounded,
-                  'WIDTH',
+                  'Width',
                   '${width.toStringAsFixed(1)} m',
                 ),
               ),
-              const SizedBox(width: 8),
               Expanded(
-                child: _metricCard(
+                child: _metric(
                   context,
                   Icons.square_foot_rounded,
-                  'AREA',
+                  'Area',
                   '${area.toStringAsFixed(1)} m²',
                 ),
               ),
             ],
           ),
           if (accuracy != null) ...[
-            const SizedBox(height: 9),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(
-                color: verified
-                    ? Colors.green.withValues(alpha: .075)
-                    : primary.withValues(alpha: .06),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.gps_fixed_rounded,
-                    size: 17,
-                    color: verified ? Colors.green.shade700 : primary,
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.gps_fixed_rounded,
+                  size: 16,
+                  color: verified ? Colors.green.shade700 : primary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Center accuracy ${accuracy!.toStringAsFixed(1)} m',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: verified ? Colors.green.shade700 : null,
                   ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Centre accuracy',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                  ),
-                  Text(
-                    '${accuracy!.toStringAsFixed(1)} m',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      color: verified ? Colors.green.shade700 : primary,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ],
@@ -1888,43 +1807,22 @@ class ClassroomGeofencePreview extends StatelessWidget {
     );
   }
 
-  Widget _metricCard(
+  Widget _metric(
     BuildContext context,
     IconData icon,
     String label,
     String value,
   ) {
-    final primary = Theme.of(context).colorScheme.primary;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withValues(alpha: .55),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 16, color: primary),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.w800,
-              letterSpacing: .6,
-            ),
-          ),
-          const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
-            ),
-          ),
-        ],
-      ),
+    return Column(
+      children: [
+        Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(height: 3),
+        Text(label, style: const TextStyle(fontSize: 10)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+        ),
+      ],
     );
   }
 }
@@ -1949,41 +1847,26 @@ class ClassroomGeofencePainter extends CustomPainter {
     final safeLength = length > 0 ? length : 1.0;
     final safeWidth = width > 0 ? width : 1.0;
     final ratio = safeLength / safeWidth;
-
-    // Deliberately reserve space around every side. This prevents N/S/E/W
-    // and measurement labels from touching the classroom rectangle.
-    const leftSpace = 74.0;
-    const rightSpace = 52.0;
-    const topSpace = 42.0;
-    const bottomSpace = 54.0;
-
-    final availableWidth = max(80.0, size.width - leftSpace - rightSpace);
-    final availableHeight = max(70.0, size.height - topSpace - bottomSpace);
+    const horizontalPadding = 52.0;
+    const verticalPadding = 30.0;
+    final availableWidth = max(80.0, size.width - horizontalPadding * 2);
+    final availableHeight = max(70.0, size.height - verticalPadding * 2);
 
     double rectWidth = availableWidth;
     double rectHeight = rectWidth / ratio;
-
     if (rectHeight > availableHeight) {
       rectHeight = availableHeight;
       rectWidth = rectHeight * ratio;
     }
 
-    rectWidth = max(80.0, rectWidth);
-    rectHeight = max(54.0, rectHeight);
-
     final rect = Rect.fromCenter(
-      center: Offset(
-        leftSpace + (availableWidth / 2),
-        topSpace + (availableHeight / 2),
-      ),
+      center: Offset(size.width / 2, size.height / 2 + 4),
       width: rectWidth,
       height: rectHeight,
     );
 
-    final boundaryColor = verified ? Colors.green.shade600 : primary;
-
     final fillPaint = Paint()
-      ..color = boundaryColor.withValues(alpha: .075)
+      ..color = primary.withValues(alpha: .09)
       ..style = PaintingStyle.fill;
     canvas.drawRRect(
       RRect.fromRectAndRadius(rect, const Radius.circular(14)),
@@ -1991,7 +1874,7 @@ class ClassroomGeofencePainter extends CustomPainter {
     );
 
     final borderPaint = Paint()
-      ..color = boundaryColor
+      ..color = primary
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
     canvas.drawRRect(
@@ -2001,153 +1884,113 @@ class ClassroomGeofencePainter extends CustomPainter {
 
     final center = rect.center;
     final centerPaint = Paint()
-      ..color = boundaryColor
+      ..color = verified ? Colors.green.shade600 : primary
       ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, 8, centerPaint);
 
     if (accuracy != null && accuracy! > 0) {
       final accuracyRadius = max(
-        12.0,
-        min(rect.shortestSide * .20, accuracy! * 2.0),
+        10.0,
+        min(rect.shortestSide * .22, accuracy! * 2.2),
       );
       final ringPaint = Paint()
-        ..color = boundaryColor.withValues(alpha: .12)
+        ..color = (verified ? Colors.green.shade600 : primary).withValues(
+          alpha: .16,
+        )
         ..style = PaintingStyle.fill;
       canvas.drawCircle(center, accuracyRadius, ringPaint);
+      canvas.drawCircle(center, 8, centerPaint);
     }
 
-    canvas.drawCircle(center, 7, centerPaint);
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    void label(String text, Offset offset, {bool bold = false}) {
+      textPainter.text = TextSpan(
+        text: text,
+        style: TextStyle(
+          color: primary,
+          fontSize: 11,
+          fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+        ),
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, offset);
+    }
 
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
+    label('N', Offset(center.dx - 4, max(0, rect.top - 28)), bold: true);
+    label(
+      'S',
+      Offset(center.dx - 4, min(size.height - 15, rect.bottom + 8)),
+      bold: true,
+    );
+    label('W', Offset(max(4, rect.left - 28), center.dy - 7), bold: true);
+    label(
+      'E',
+      Offset(min(size.width - 16, rect.right + 10), center.dy - 7),
+      bold: true,
     );
 
-    void drawText(
-      String text,
-      Offset centerPoint, {
-      double fontSize = 10,
-      FontWeight weight = FontWeight.w700,
-      Color? color,
-    }) {
-      textPainter.text = TextSpan(
-        text: text,
-        style: TextStyle(
-          color: color ?? primary,
-          fontSize: fontSize,
-          fontWeight: weight,
-        ),
-      );
-      textPainter.layout();
-      textPainter.paint(
-        canvas,
-        Offset(
-          centerPoint.dx - textPainter.width / 2,
-          centerPoint.dy - textPainter.height / 2,
-        ),
-      );
-    }
-
-    void drawPill(String text, Offset centerPoint) {
-      textPainter.text = TextSpan(
-        text: text,
-        style: TextStyle(
-          color: boundaryColor,
-          fontSize: 9,
-          fontWeight: FontWeight.w900,
-        ),
-      );
-      textPainter.layout();
-      final pill = RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: centerPoint,
-          width: textPainter.width + 16,
-          height: 22,
-        ),
-        const Radius.circular(11),
-      );
-      final paint = Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.fill;
-      canvas.drawRRect(pill, paint);
-      final border = Paint()
-        ..color = boundaryColor.withValues(alpha: .25)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1;
-      canvas.drawRRect(pill, border);
-      textPainter.paint(
-        canvas,
-        Offset(
-          centerPoint.dx - textPainter.width / 2,
-          centerPoint.dy - textPainter.height / 2,
-        ),
-      );
-    }
-
-    // Direction markers are deliberately outside the classroom boundary.
-    drawPill('N', Offset(center.dx, rect.top - 28));
-    drawPill('S', Offset(center.dx, rect.bottom + 28));
-    drawPill('W', Offset(rect.left - 36, center.dy));
-    drawPill('E', Offset(rect.right + 26, center.dy));
-
-    // Length measurement: below the classroom, independent from S marker.
     final dimensionPaint = Paint()
-      ..color = boundaryColor.withValues(alpha: .55)
+      ..color = primary.withValues(alpha: .65)
       ..strokeWidth = 1.2;
-    final lengthY = min(size.height - 13, rect.bottom + 39);
-
+    final horizontalY = min(size.height - 3, rect.bottom + 22);
     canvas.drawLine(
-      Offset(rect.left, lengthY),
-      Offset(rect.right, lengthY),
+      Offset(rect.left, horizontalY),
+      Offset(rect.right, horizontalY),
       dimensionPaint,
     );
     canvas.drawLine(
-      Offset(rect.left, lengthY - 4),
-      Offset(rect.left, lengthY + 4),
+      Offset(rect.left, horizontalY - 4),
+      Offset(rect.left, horizontalY + 4),
       dimensionPaint,
     );
     canvas.drawLine(
-      Offset(rect.right, lengthY - 4),
-      Offset(rect.right, lengthY + 4),
+      Offset(rect.right, horizontalY - 4),
+      Offset(rect.right, horizontalY + 4),
       dimensionPaint,
     );
-    drawText(
-      'Length  ${safeLength.toStringAsFixed(1)} m',
-      Offset(center.dx, lengthY + 10),
-      fontSize: 9,
-      weight: FontWeight.w800,
+    label(
+      '${safeLength.toStringAsFixed(1)} m',
+      Offset(center.dx - 20, horizontalY + 4),
     );
 
-    // Width measurement: left of the classroom, independent from W marker.
-    final widthX = max(30.0, rect.left - 55);
+    final verticalX = max(3.0, rect.left - 20);
     canvas.drawLine(
-      Offset(widthX, rect.top),
-      Offset(widthX, rect.bottom),
+      Offset(verticalX, rect.top),
+      Offset(verticalX, rect.bottom),
       dimensionPaint,
     );
     canvas.drawLine(
-      Offset(widthX - 4, rect.top),
-      Offset(widthX + 4, rect.top),
+      Offset(verticalX - 4, rect.top),
+      Offset(verticalX + 4, rect.top),
       dimensionPaint,
     );
     canvas.drawLine(
-      Offset(widthX - 4, rect.bottom),
-      Offset(widthX + 4, rect.bottom),
+      Offset(verticalX - 4, rect.bottom),
+      Offset(verticalX + 4, rect.bottom),
       dimensionPaint,
     );
-
+    textPainter.text = TextSpan(
+      text: '${safeWidth.toStringAsFixed(1)} m',
+      style: TextStyle(
+        color: primary,
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+    textPainter.layout();
     canvas.save();
-    canvas.translate(widthX - 13, center.dy);
-    canvas.rotate(-pi / 2);
-    drawText(
-      'Width  ${safeWidth.toStringAsFixed(1)} m',
-      Offset.zero,
-      fontSize: 9,
-      weight: FontWeight.w800,
+    canvas.translate(
+      max(1.0, verticalX - 8),
+      center.dy + textPainter.width / 2,
     );
+    canvas.rotate(-pi / 2);
+    textPainter.paint(canvas, Offset.zero);
     canvas.restore();
 
-    // Centre marker label sits inside the rectangle with a dedicated pill.
-    drawPill('CLASSROOM CENTRE', Offset(center.dx, center.dy + 32));
+    label(
+      'FACULTY / CLASSROOM CENTRE',
+      Offset(max(4, center.dx - 66), center.dy + 13),
+    );
   }
 
   @override
@@ -3787,8 +3630,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         data: _qrData!,
         version: QrVersions.auto,
         gapless: true,
-        color: Colors.black,
-        emptyColor: Colors.white,
       );
 
       final ByteData? byteData = await painter.toImageData(
@@ -4170,15 +4011,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                       version: QrVersions.auto,
                       size: 230,
                       backgroundColor: Colors.white,
-                      eyeStyle: const QrEyeStyle(
-                        eyeShape: QrEyeShape.square,
-                        color: Colors.black,
-                      ),
-                      dataModuleStyle: const QrDataModuleStyle(
-                        dataModuleShape: QrDataModuleShape.square,
-                        color: Colors.black,
-                      ),
-                      errorCorrectionLevel: QrErrorCorrectLevel.H,
                     ),
                   ),
                 const SizedBox(height: 14),
@@ -11224,62 +11056,35 @@ class _AttendancePageState extends State<AttendancePage> {
       // AUTHENTICATION FAILURE
       // ======================================================
 
-      // ======================================================
-// AUTHENTICATION FAILURE
-// ======================================================
+      if (response.statusCode == 401) {
+        if (!mounted) return;
 
-if (response.statusCode == 401) {
-  debugPrint(
-    'ATTENDANCE AUTHENTICATION FAILED: '
-    '${response.body}',
-  );
+        setState(() {
+          _processing = false;
+          _statusMessage = 'Session expired. Please login again.';
+        });
 
-  final prefs = await SharedPreferences.getInstance();
+        await showDialog(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Authentication Required'),
+            content: const Text(
+              'Your login session has expired.\n\n'
+              'Please login again before marking attendance.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
 
-  // Remove only the invalid authentication session.
-  await prefs.remove('auth_token');
-  await prefs.remove('user_role');
-  await prefs.remove('username');
-  await prefs.remove('user_id');
-
-  if (!mounted) return;
-
-  setState(() {
-    _processing = false;
-    _statusMessage =
-        'Your login session is no longer valid. Please login again.';
-  });
-
-  await showDialog(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Login Required'),
-      content: const Text(
-        'Your authentication session is no longer valid.\n\n'
-        'Please login again to continue marking attendance.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.pop(dialogContext);
-          },
-          child: const Text('OK'),
-        ),
-      ],
-    ),
-  );
-
-  if (!mounted) return;
-
-  Navigator.of(context).pushAndRemoveUntil(
-    MaterialPageRoute(
-      builder: (_) => LoginPage(cameras: widget.cameras),
-    ),
-    (route) => false,
-  );
-
-  return;
-}
+        return;
+      }
 
       // ======================================================
       // ATTENDANCE SUCCESS

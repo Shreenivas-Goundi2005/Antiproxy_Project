@@ -146,16 +146,12 @@ class _AntiProxyAppState extends State<AntiProxyApp> {
     // ----------------------------------------------------------
     // FACULTY
     // ----------------------------------------------------------
-    // Restore the faculty session from SharedPreferences after
-    // the app is reopened or Android recreates the app process.
-    // The faculty dashboard itself does not need a new login as
-    // long as the locally saved authentication token is present.
+    // There is currently no FacultyDashboardPage class in
+    // main.dart, so do not reference a non-existent class here.
+    //
+    // The existing faculty login/navigation remains unchanged.
     if (_savedRole == 'faculty') {
-      return FacultyDashboard(
-        cameras: widget.cameras,
-        userId: _savedUserId,
-        username: _savedUsername ?? '',
-      );
+      return LoginPage(cameras: widget.cameras);
     }
 
     if (_savedRole == 'admin') {
@@ -1669,497 +1665,6 @@ class _FacultyRegisterPageState extends State<FacultyRegisterPage> {
 // FACULTY DASHBOARD
 // ============================================================
 
-class ClassroomGeofencePreview extends StatelessWidget {
-  final double length;
-  final double width;
-  final double? accuracy;
-  final bool verified;
-  final bool compact;
-
-  const ClassroomGeofencePreview({
-    super.key,
-    required this.length,
-    required this.width,
-    this.accuracy,
-    this.verified = false,
-    this.compact = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
-    final area = length > 0 && width > 0 ? length * width : 0.0;
-
-    return Container(
-      padding: EdgeInsets.all(compact ? 14 : 16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(compact ? 20 : 24),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: .65)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .035),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: primary.withValues(alpha: .10),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.crop_free_rounded, color: primary),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Classroom geofence',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Rectangular attendance boundary',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: verified
-                      ? Colors.green.withValues(alpha: .10)
-                      : primary.withValues(alpha: .09),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: verified
-                        ? Colors.green.withValues(alpha: .22)
-                        : primary.withValues(alpha: .18),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      verified
-                          ? Icons.verified_rounded
-                          : Icons.visibility_rounded,
-                      size: 14,
-                      color: verified ? Colors.green.shade700 : primary,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      verified ? 'VERIFIED' : 'PREVIEW',
-                      style: TextStyle(
-                        color: verified ? Colors.green.shade700 : primary,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: .4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: BoxDecoration(
-              color: primary.withValues(alpha: .055),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline_rounded, size: 16, color: primary),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'The faculty position is the classroom centre. Students must stay inside the rectangle.',
-                    style: TextStyle(fontSize: 11, height: 1.3),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: compact ? 224 : 270,
-            width: double.infinity,
-            child: CustomPaint(
-              painter: ClassroomGeofencePainter(
-                length: length,
-                width: width,
-                primary: primary,
-                verified: verified,
-                accuracy: accuracy,
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(
-                child: _metricCard(
-                  context,
-                  Icons.straighten_rounded,
-                  'LENGTH',
-                  '${length.toStringAsFixed(1)} m',
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _metricCard(
-                  context,
-                  Icons.width_normal_rounded,
-                  'WIDTH',
-                  '${width.toStringAsFixed(1)} m',
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _metricCard(
-                  context,
-                  Icons.square_foot_rounded,
-                  'AREA',
-                  '${area.toStringAsFixed(1)} m²',
-                ),
-              ),
-            ],
-          ),
-          if (accuracy != null) ...[
-            const SizedBox(height: 9),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(
-                color: verified
-                    ? Colors.green.withValues(alpha: .075)
-                    : primary.withValues(alpha: .06),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.gps_fixed_rounded,
-                    size: 17,
-                    color: verified ? Colors.green.shade700 : primary,
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Centre accuracy',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                  ),
-                  Text(
-                    '${accuracy!.toStringAsFixed(1)} m',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      color: verified ? Colors.green.shade700 : primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _metricCard(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value,
-  ) {
-    final primary = Theme.of(context).colorScheme.primary;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withValues(alpha: .55),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 16, color: primary),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.w800,
-              letterSpacing: .6,
-            ),
-          ),
-          const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ClassroomGeofencePainter extends CustomPainter {
-  final double length;
-  final double width;
-  final Color primary;
-  final bool verified;
-  final double? accuracy;
-
-  ClassroomGeofencePainter({
-    required this.length,
-    required this.width,
-    required this.primary,
-    required this.verified,
-    required this.accuracy,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final safeLength = length > 0 ? length : 1.0;
-    final safeWidth = width > 0 ? width : 1.0;
-    final ratio = safeLength / safeWidth;
-
-    // Deliberately reserve space around every side. This prevents N/S/E/W
-    // and measurement labels from touching the classroom rectangle.
-    const leftSpace = 74.0;
-    const rightSpace = 52.0;
-    const topSpace = 42.0;
-    const bottomSpace = 54.0;
-
-    final availableWidth = max(80.0, size.width - leftSpace - rightSpace);
-    final availableHeight = max(70.0, size.height - topSpace - bottomSpace);
-
-    double rectWidth = availableWidth;
-    double rectHeight = rectWidth / ratio;
-
-    if (rectHeight > availableHeight) {
-      rectHeight = availableHeight;
-      rectWidth = rectHeight * ratio;
-    }
-
-    rectWidth = max(80.0, rectWidth);
-    rectHeight = max(54.0, rectHeight);
-
-    final rect = Rect.fromCenter(
-      center: Offset(
-        leftSpace + (availableWidth / 2),
-        topSpace + (availableHeight / 2),
-      ),
-      width: rectWidth,
-      height: rectHeight,
-    );
-
-    final boundaryColor = verified ? Colors.green.shade600 : primary;
-
-    final fillPaint = Paint()
-      ..color = boundaryColor.withValues(alpha: .075)
-      ..style = PaintingStyle.fill;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(14)),
-      fillPaint,
-    );
-
-    final borderPaint = Paint()
-      ..color = boundaryColor
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(14)),
-      borderPaint,
-    );
-
-    final center = rect.center;
-    final centerPaint = Paint()
-      ..color = boundaryColor
-      ..style = PaintingStyle.fill;
-
-    if (accuracy != null && accuracy! > 0) {
-      final accuracyRadius = max(
-        12.0,
-        min(rect.shortestSide * .20, accuracy! * 2.0),
-      );
-      final ringPaint = Paint()
-        ..color = boundaryColor.withValues(alpha: .12)
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(center, accuracyRadius, ringPaint);
-    }
-
-    canvas.drawCircle(center, 7, centerPaint);
-
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
-    );
-
-    void drawText(
-      String text,
-      Offset centerPoint, {
-      double fontSize = 10,
-      FontWeight weight = FontWeight.w700,
-      Color? color,
-    }) {
-      textPainter.text = TextSpan(
-        text: text,
-        style: TextStyle(
-          color: color ?? primary,
-          fontSize: fontSize,
-          fontWeight: weight,
-        ),
-      );
-      textPainter.layout();
-      textPainter.paint(
-        canvas,
-        Offset(
-          centerPoint.dx - textPainter.width / 2,
-          centerPoint.dy - textPainter.height / 2,
-        ),
-      );
-    }
-
-    void drawPill(String text, Offset centerPoint) {
-      textPainter.text = TextSpan(
-        text: text,
-        style: TextStyle(
-          color: boundaryColor,
-          fontSize: 9,
-          fontWeight: FontWeight.w900,
-        ),
-      );
-      textPainter.layout();
-      final pill = RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: centerPoint,
-          width: textPainter.width + 16,
-          height: 22,
-        ),
-        const Radius.circular(11),
-      );
-      final paint = Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.fill;
-      canvas.drawRRect(pill, paint);
-      final border = Paint()
-        ..color = boundaryColor.withValues(alpha: .25)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1;
-      canvas.drawRRect(pill, border);
-      textPainter.paint(
-        canvas,
-        Offset(
-          centerPoint.dx - textPainter.width / 2,
-          centerPoint.dy - textPainter.height / 2,
-        ),
-      );
-    }
-
-    // Direction markers are deliberately outside the classroom boundary.
-    drawPill('N', Offset(center.dx, rect.top - 28));
-    drawPill('S', Offset(center.dx, rect.bottom + 28));
-    drawPill('W', Offset(rect.left - 36, center.dy));
-    drawPill('E', Offset(rect.right + 26, center.dy));
-
-    // Length measurement: below the classroom, independent from S marker.
-    final dimensionPaint = Paint()
-      ..color = boundaryColor.withValues(alpha: .55)
-      ..strokeWidth = 1.2;
-    final lengthY = min(size.height - 13, rect.bottom + 39);
-
-    canvas.drawLine(
-      Offset(rect.left, lengthY),
-      Offset(rect.right, lengthY),
-      dimensionPaint,
-    );
-    canvas.drawLine(
-      Offset(rect.left, lengthY - 4),
-      Offset(rect.left, lengthY + 4),
-      dimensionPaint,
-    );
-    canvas.drawLine(
-      Offset(rect.right, lengthY - 4),
-      Offset(rect.right, lengthY + 4),
-      dimensionPaint,
-    );
-    drawText(
-      'Length  ${safeLength.toStringAsFixed(1)} m',
-      Offset(center.dx, lengthY + 10),
-      fontSize: 9,
-      weight: FontWeight.w800,
-    );
-
-    // Width measurement: left of the classroom, independent from W marker.
-    final widthX = max(30.0, rect.left - 55);
-    canvas.drawLine(
-      Offset(widthX, rect.top),
-      Offset(widthX, rect.bottom),
-      dimensionPaint,
-    );
-    canvas.drawLine(
-      Offset(widthX - 4, rect.top),
-      Offset(widthX + 4, rect.top),
-      dimensionPaint,
-    );
-    canvas.drawLine(
-      Offset(widthX - 4, rect.bottom),
-      Offset(widthX + 4, rect.bottom),
-      dimensionPaint,
-    );
-
-    canvas.save();
-    canvas.translate(widthX - 13, center.dy);
-    canvas.rotate(-pi / 2);
-    drawText(
-      'Width  ${safeWidth.toStringAsFixed(1)} m',
-      Offset.zero,
-      fontSize: 9,
-      weight: FontWeight.w800,
-    );
-    canvas.restore();
-
-    // Centre marker label sits inside the rectangle with a dedicated pill.
-    drawPill('CLASSROOM CENTRE', Offset(center.dx, center.dy + 32));
-  }
-
-  @override
-  bool shouldRepaint(covariant ClassroomGeofencePainter oldDelegate) {
-    return oldDelegate.length != length ||
-        oldDelegate.width != width ||
-        oldDelegate.primary != primary ||
-        oldDelegate.verified != verified ||
-        oldDelegate.accuracy != accuracy;
-  }
-}
-
 class FacultyDashboard extends StatefulWidget {
   final List<CameraDescription> cameras;
   final dynamic userId;
@@ -2204,22 +1709,12 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
   Duration _remainingTime = Duration.zero;
 
   Timer? _countdownTimer;
-  Timer? _attendanceRefreshTimer;
-
-  int _livePresentCount = 0;
-  int _liveLateCount = 0;
-  int _liveRejectedCount = 0;
-  int _liveTotalStudents = 0;
-  bool _attendanceRefreshing = false;
-  DateTime? _lastAttendanceRefresh;
-  List<Map<String, dynamic>> _liveRecentActivity = [];
 
   String _statusMessage = 'No attendance session is active.';
 
   @override
   void dispose() {
     _countdownTimer?.cancel();
-    _attendanceRefreshTimer?.cancel();
     super.dispose();
   }
 
@@ -2480,14 +1975,32 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     final semesterController = TextEditingController();
     final divisionController = TextEditingController();
     final durationController = TextEditingController(text: '10');
+
+    // NEW: classroom dimensions instead of radius.
     final lengthController = TextEditingController();
     final widthController = TextEditingController();
 
     bool gettingLocation = false;
-    Position? stableLocation;
-    String error = '';
-    int currentStep = 0;
 
+    Position? stableLocation;
+
+    String error = '';
+
+    // ==========================================================
+    // FAST STABLE TEACHER LOCATION
+    // ==========================================================
+    //
+    // Collects 5 high-accuracy GPS readings concurrently.
+    //
+    // Security:
+    // - Rejects mocked/fake GPS.
+    // - Rejects invalid coordinates.
+    // - Rejects invalid accuracy values.
+    // - Rejects readings worse than 20 metres.
+    //
+    // Accuracy-weighted averaging gives better readings more
+    // influence when calculating the classroom centre.
+    //
     Future<Position?> captureStableTeacherLocation(
       void Function(int completed, int total) onProgress,
     ) async {
@@ -2712,59 +2225,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
       }
     }
 
-    bool validateClassStep(void Function(void Function()) setDialogState) {
-      final subject = subjectNameController.text.trim();
-      final code = subjectCodeController.text.trim();
-      final semester = semesterController.text.trim();
-      final division = divisionController.text.trim();
-      final duration = int.tryParse(durationController.text.trim());
-
-      if (subject.isEmpty) {
-        setDialogState(() => error = 'Enter the subject name.');
-        return false;
-      }
-      if (code.isEmpty) {
-        setDialogState(() => error = 'Enter the subject code.');
-        return false;
-      }
-      if (semester.isEmpty || int.tryParse(semester) == null) {
-        setDialogState(() => error = 'Enter a valid semester number.');
-        return false;
-      }
-      if (division.isEmpty) {
-        setDialogState(() => error = 'Enter the division.');
-        return false;
-      }
-      if (duration == null || duration < 1 || duration > 240) {
-        setDialogState(
-          () => error = 'Duration must be between 1 and 240 minutes.',
-        );
-        return false;
-      }
-      setDialogState(() => error = '');
-      return true;
-    }
-
-    bool validateClassroomStep(void Function(void Function()) setDialogState) {
-      final length = double.tryParse(lengthController.text.trim());
-      final width = double.tryParse(widthController.text.trim());
-
-      if (length == null || length <= 0 || length > 500) {
-        setDialogState(
-          () => error = 'Classroom length must be between 0 and 500 metres.',
-        );
-        return false;
-      }
-      if (width == null || width <= 0 || width > 500) {
-        setDialogState(
-          () => error = 'Classroom width must be between 0 and 500 metres.',
-        );
-        return false;
-      }
-      setDialogState(() => error = '');
-      return true;
-    }
-
     try {
       await showDialog(
         context: context,
@@ -2772,8 +2232,14 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         builder: (dialogContext) {
           return StatefulBuilder(
             builder: (dialogBuildContext, setDialogState) {
+              // ==================================================
+              // START LOCATION CAPTURE
+              // ==================================================
+
               Future<void> captureLocation() async {
-                if (gettingLocation) return;
+                if (gettingLocation) {
+                  return;
+                }
 
                 setDialogState(() {
                   gettingLocation = true;
@@ -2785,638 +2251,411 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                   completed,
                   total,
                 ) {
-                  if (!dialogBuildContext.mounted) return;
+                  if (!dialogBuildContext.mounted) {
+                    return;
+                  }
+
                   setDialogState(() {
                     error =
-                        'Verifying classroom centre...\nGPS reading $completed of $total';
+                        'Getting accurate classroom centre...\n'
+                        'GPS reading $completed of $total';
                   });
                 });
 
-                if (!dialogBuildContext.mounted) return;
+                if (!dialogBuildContext.mounted) {
+                  return;
+                }
 
                 if (capturedLocation == null) {
                   setDialogState(() {
                     gettingLocation = false;
                     stableLocation = null;
                     error =
-                        'Location verification failed.\nMove to the classroom centre, enable GPS, and ensure mock location is disabled.';
+                        'Could not obtain 5 reliable GPS readings.\n'
+                        'Make sure GPS is enabled and mock location is disabled.';
                   });
+
                   return;
                 }
 
                 stableLocation = capturedLocation;
+
                 setDialogState(() {
                   gettingLocation = false;
                   error = '';
                 });
               }
 
-              final double? classroomLength = double.tryParse(
-                lengthController.text.trim(),
-              );
-              final double? classroomWidth = double.tryParse(
-                widthController.text.trim(),
-              );
-              final double area =
-                  (classroomLength ?? 0) * (classroomWidth ?? 0);
-
-              Widget stepIndicator() {
-                const labels = ['Class', 'Classroom', 'Security'];
-                return Row(
-                  children: List.generate(labels.length, (index) {
-                    final active = index == currentStep;
-                    final completed =
-                        index < currentStep ||
-                        (index == 2 && stableLocation != null);
-                    return Expanded(
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              if (index > 0)
-                                Expanded(
-                                  child: Container(
-                                    height: 2,
-                                    color: index <= currentStep
-                                        ? Theme.of(
-                                            dialogBuildContext,
-                                          ).colorScheme.primary
-                                        : Theme.of(
-                                            dialogBuildContext,
-                                          ).dividerColor,
-                                  ),
-                                ),
-                              Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: active || completed
-                                      ? Theme.of(
-                                          dialogBuildContext,
-                                        ).colorScheme.primary
-                                      : Theme.of(
-                                          dialogBuildContext,
-                                        ).colorScheme.surfaceContainerHighest,
-                                ),
-                                child: Icon(
-                                  completed && !active
-                                      ? Icons.check
-                                      : Icons.circle,
-                                  size: completed && !active ? 18 : 10,
-                                  color: active || completed
-                                      ? Theme.of(
-                                          dialogBuildContext,
-                                        ).colorScheme.onPrimary
-                                      : Theme.of(
-                                          dialogBuildContext,
-                                        ).colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              if (index < labels.length - 1)
-                                Expanded(
-                                  child: Container(
-                                    height: 2,
-                                    color: index < currentStep
-                                        ? Theme.of(
-                                            dialogBuildContext,
-                                          ).colorScheme.primary
-                                        : Theme.of(
-                                            dialogBuildContext,
-                                          ).dividerColor,
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            labels[index],
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: active
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              color: active
-                                  ? Theme.of(
-                                      dialogBuildContext,
-                                    ).colorScheme.primary
-                                  : Theme.of(
-                                      dialogBuildContext,
-                                    ).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                );
-              }
-
-              Widget sectionHeader(
-                IconData icon,
-                String title,
-                String subtitle,
-              ) {
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    color: Theme.of(
-                      dialogBuildContext,
-                    ).colorScheme.surfaceContainerHighest,
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        icon,
-                        color: Theme.of(dialogBuildContext).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              subtitle,
-                              style: TextStyle(
-                                color: Theme.of(
-                                  dialogBuildContext,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              Widget classStep() {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    sectionHeader(
-                      Icons.menu_book_rounded,
-                      'Class details',
-                      'Tell AntiProxy which class is being recorded.',
-                    ),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: subjectNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Subject name',
-                        hintText: 'Data Structures',
-                        prefixIcon: Icon(Icons.book_outlined),
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: subjectCodeController,
-                      textCapitalization: TextCapitalization.characters,
-                      decoration: const InputDecoration(
-                        labelText: 'Subject code',
-                        hintText: '22UCS113C',
-                        prefixIcon: Icon(Icons.code_rounded),
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: semesterController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'Semester',
-                              hintText: '7',
-                              prefixIcon: Icon(Icons.school_outlined),
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: divisionController,
-                            textCapitalization: TextCapitalization.characters,
-                            decoration: const InputDecoration(
-                              labelText: 'Division',
-                              hintText: 'B',
-                              prefixIcon: Icon(Icons.groups_outlined),
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: durationController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Session duration (minutes)',
-                        hintText: '10',
-                        prefixIcon: Icon(Icons.timer_outlined),
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ],
-                );
-              }
-
-              Widget classroomStep() {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    sectionHeader(
-                      Icons.crop_square_rounded,
-                      'Classroom setup',
-                      'The faculty GPS position becomes the centre of this rectangular classroom.',
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: lengthController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Length (m)',
-                              hintText: '8',
-                              prefixIcon: Icon(Icons.straighten_rounded),
-                              border: OutlineInputBorder(),
-                            ),
-                            onChanged: (_) => setDialogState(() {}),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: widthController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Width (m)',
-                              hintText: '6',
-                              prefixIcon: Icon(Icons.width_normal_rounded),
-                              border: OutlineInputBorder(),
-                            ),
-                            onChanged: (_) => setDialogState(() {}),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    ClassroomGeofencePreview(
-                      length: classroomLength ?? 0,
-                      width: classroomWidth ?? 0,
-                      verified: false,
-                    ),
-                  ],
-                );
-              }
-
-              Widget securityStep() {
-                final verified = stableLocation != null;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    sectionHeader(
-                      Icons.verified_user_rounded,
-                      'Security verification',
-                      'AntiProxy verifies the classroom centre before generating the attendance QR.',
-                    ),
-                    const SizedBox(height: 14),
-                    ...[
-                      (
-                        '5-point GPS verification',
-                        'Five accurate readings establish a stable centre.',
-                        Icons.location_searching_rounded,
-                      ),
-                      (
-                        'Mock-location protection',
-                        'Simulated/fake GPS readings are rejected.',
-                        Icons.gps_off_rounded,
-                      ),
-                      (
-                        'Rectangular geofence',
-                        'Students must be inside the configured classroom boundary.',
-                        Icons.crop_square_rounded,
-                      ),
-                      (
-                        'Dynamic QR session',
-                        'The QR is generated only after verification succeeds.',
-                        Icons.qr_code_2_rounded,
-                      ),
-                    ].map((item) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 9),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            color: Theme.of(
-                              dialogBuildContext,
-                            ).colorScheme.surfaceContainerHighest,
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                item.$3,
-                                color: Theme.of(
-                                  dialogBuildContext,
-                                ).colorScheme.primary,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      item.$1,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    Text(
-                                      item.$2,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Theme.of(
-                                          dialogBuildContext,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const Icon(Icons.check_circle_rounded, size: 20),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(18),
-                        color: verified
-                            ? Theme.of(
-                                dialogBuildContext,
-                              ).colorScheme.primaryContainer
-                            : Theme.of(
-                                dialogBuildContext,
-                              ).colorScheme.surfaceContainerHighest,
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            verified
-                                ? Icons.location_on_rounded
-                                : Icons.my_location_rounded,
-                            size: 34,
-                            color: Theme.of(
-                              dialogBuildContext,
-                            ).colorScheme.primary,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            verified
-                                ? 'Classroom centre verified'
-                                : 'Ready to verify classroom centre',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          if (verified)
-                            Text(
-                              'Accuracy ${stableLocation!.accuracy.toStringAsFixed(1)} m\n'
-                              '${stableLocation!.latitude.toStringAsFixed(6)}, ${stableLocation!.longitude.toStringAsFixed(6)}',
-                              textAlign: TextAlign.center,
-                            )
-                          else
-                            const Text(
-                              'Stand at the centre of the classroom and verify your location before starting.',
-                              textAlign: TextAlign.center,
-                            ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: gettingLocation
-                                  ? null
-                                  : captureLocation,
-                              icon: gettingLocation
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : Icon(
-                                      verified
-                                          ? Icons.refresh_rounded
-                                          : Icons.my_location_rounded,
-                                    ),
-                              label: Text(
-                                gettingLocation
-                                    ? 'VERIFYING LOCATION...'
-                                    : verified
-                                    ? 'VERIFY AGAIN'
-                                    : 'VERIFY CLASSROOM CENTRE',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (gettingLocation) ...[
-                      const SizedBox(height: 12),
-                      const LinearProgressIndicator(),
-                    ],
-                  ],
-                );
-              }
-
-              final titles = [
-                'Class details',
-                'Classroom setup',
-                'Security verification',
-              ];
-
               return AlertDialog(
-                titlePadding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
-                contentPadding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
-                actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                title: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Start Attendance',
-                            style: Theme.of(dialogBuildContext)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
+                title: const Text('Create Attendance Session'),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // ==================================================
+                      // SUBJECT NAME
+                      // ==================================================
+                      TextField(
+                        controller: subjectNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Subject Name',
+                          hintText: 'Data Structures',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.book),
                         ),
-                        IconButton(
-                          tooltip: 'Close',
-                          onPressed: gettingLocation
-                              ? null
-                              : () => Navigator.pop(dialogContext),
-                          icon: const Icon(Icons.close_rounded),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      'Step ${currentStep + 1} of 3 • ${titles[currentStep]}',
-                      style: TextStyle(
-                        color: Theme.of(
-                          dialogBuildContext,
-                        ).colorScheme.onSurfaceVariant,
-                        fontSize: 13,
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    stepIndicator(),
-                  ],
-                ),
-                content: SizedBox(
-                  width: 520,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 12),
-                        if (currentStep == 0) classStep(),
-                        if (currentStep == 1) classroomStep(),
-                        if (currentStep == 2) securityStep(),
-                        if (error.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              color: gettingLocation
-                                  ? Theme.of(
-                                      dialogBuildContext,
-                                    ).colorScheme.primaryContainer
-                                  : Theme.of(
-                                      dialogBuildContext,
-                                    ).colorScheme.errorContainer,
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  gettingLocation
-                                      ? Icons.sync_rounded
-                                      : Icons.info_outline_rounded,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(child: Text(error)),
-                              ],
-                            ),
+
+                      const SizedBox(height: 12),
+
+                      // ==================================================
+                      // SUBJECT CODE
+                      // ==================================================
+                      TextField(
+                        controller: subjectCodeController,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: const InputDecoration(
+                          labelText: 'Subject Code',
+                          hintText: '21CS42',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.code),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // ==================================================
+                      // SEMESTER
+                      // ==================================================
+                      TextField(
+                        controller: semesterController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Semester',
+                          hintText: '5',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.school),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // ==================================================
+                      // DIVISION
+                      // ==================================================
+                      TextField(
+                        controller: divisionController,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: const InputDecoration(
+                          labelText: 'Division',
+                          hintText: 'A',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.groups),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // ==================================================
+                      // DURATION
+                      // ==================================================
+                      TextField(
+                        controller: durationController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Attendance Duration (minutes)',
+                          hintText: '10',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.timer),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // ==================================================
+                      // CLASSROOM LENGTH
+                      // ==================================================
+                      TextField(
+                        controller: lengthController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Classroom Length (metres)',
+                          hintText: '10',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.straighten),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // ==================================================
+                      // CLASSROOM WIDTH
+                      // ==================================================
+                      TextField(
+                        controller: widthController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Classroom Width (metres)',
+                          hintText: '8',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.width_normal),
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      // ==================================================
+                      // LOCATION BUTTON
+                      // ==================================================
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: gettingLocation ? null : captureLocation,
+                          icon: gettingLocation
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.my_location),
+                          label: Text(
+                            gettingLocation
+                                ? 'COLLECTING GPS READINGS...'
+                                : stableLocation == null
+                                ? 'CAPTURE CLASSROOM CENTRE'
+                                : 'CLASSROOM CENTRE CAPTURED ✓',
                           ),
-                        ],
-                      ],
-                    ),
+                        ),
+                      ),
+
+                      // ==================================================
+                      // STABLE LOCATION INFORMATION
+                      // ==================================================
+                      if (stableLocation != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            'Classroom Centre\n'
+                            'Lat: ${stableLocation!.latitude.toStringAsFixed(6)}\n'
+                            'Lng: ${stableLocation!.longitude.toStringAsFixed(6)}\n'
+                            'Best Accuracy: ${stableLocation!.accuracy.toStringAsFixed(1)} m',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+
+                      // ==================================================
+                      // ERROR / PROGRESS
+                      // ==================================================
+                      if (error.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Text(
+                            error,
+                            style: TextStyle(
+                              color: gettingLocation ? Colors.blue : Colors.red,
+                              fontSize: 12,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
+
+                // ====================================================
+                // ACTIONS
+                // ====================================================
                 actions: [
-                  if (currentStep > 0)
-                    TextButton(
-                      onPressed: gettingLocation
-                          ? null
-                          : () => setDialogState(() {
-                              currentStep--;
-                              error = '';
-                            }),
-                      child: const Text('BACK'),
-                    )
-                  else
-                    TextButton(
-                      onPressed: gettingLocation
-                          ? null
-                          : () => Navigator.pop(dialogContext),
-                      child: const Text('CANCEL'),
-                    ),
-                  const SizedBox(width: 4),
-                  FilledButton.icon(
+                  TextButton(
+                    onPressed: gettingLocation
+                        ? null
+                        : () {
+                            Navigator.pop(dialogContext);
+                          },
+                    child: const Text('CANCEL'),
+                  ),
+
+                  ElevatedButton.icon(
                     onPressed: gettingLocation
                         ? null
                         : () async {
-                            if (currentStep == 0) {
-                              if (validateClassStep(setDialogState)) {
-                                setDialogState(() {
-                                  currentStep = 1;
-                                  error = '';
-                                });
-                              }
-                              return;
-                            }
+                            // --------------------------------------
+                            // READ FORM VALUES
+                            // --------------------------------------
 
-                            if (currentStep == 1) {
-                              if (validateClassroomStep(setDialogState)) {
-                                setDialogState(() {
-                                  currentStep = 2;
-                                  error = '';
-                                });
-                              }
-                              return;
-                            }
+                            final subject = subjectNameController.text.trim();
 
-                            if (stableLocation == null) {
+                            final code = subjectCodeController.text
+                                .trim()
+                                .toUpperCase();
+
+                            final semester = semesterController.text.trim();
+
+                            final division = divisionController.text
+                                .trim()
+                                .toUpperCase();
+
+                            final duration = int.tryParse(
+                              durationController.text.trim(),
+                            );
+
+                            final classroomLength = double.tryParse(
+                              lengthController.text.trim(),
+                            );
+
+                            final classroomWidth = double.tryParse(
+                              widthController.text.trim(),
+                            );
+
+                            // --------------------------------------
+                            // VALIDATION
+                            // --------------------------------------
+
+                            if (subject.isEmpty) {
                               setDialogState(() {
-                                error =
-                                    'Verify the classroom centre before starting attendance.';
+                                error = 'Enter subject name.';
                               });
                               return;
                             }
 
-                            final subject = subjectNameController.text.trim();
-                            final code = subjectCodeController.text
-                                .trim()
-                                .toUpperCase();
-                            final semester = semesterController.text.trim();
-                            final division = divisionController.text
-                                .trim()
-                                .toUpperCase();
-                            final duration = int.parse(
-                              durationController.text.trim(),
-                            );
-                            final finalLength = double.parse(
-                              lengthController.text.trim(),
-                            );
-                            final finalWidth = double.parse(
-                              widthController.text.trim(),
-                            );
-                            final capturedLocation = stableLocation!;
+                            if (code.isEmpty) {
+                              setDialogState(() {
+                                error = 'Enter subject code.';
+                              });
+                              return;
+                            }
+
+                            if (semester.isEmpty) {
+                              setDialogState(() {
+                                error = 'Enter semester.';
+                              });
+                              return;
+                            }
+
+                            if (int.tryParse(semester) == null) {
+                              setDialogState(() {
+                                error = 'Semester must be a number.';
+                              });
+                              return;
+                            }
+
+                            if (division.isEmpty) {
+                              setDialogState(() {
+                                error = 'Enter division.';
+                              });
+                              return;
+                            }
+
+                            if (duration == null || duration <= 0) {
+                              setDialogState(() {
+                                error = 'Enter a valid duration.';
+                              });
+                              return;
+                            }
+
+                            // --------------------------------------
+                            // LENGTH VALIDATION
+                            // --------------------------------------
+
+                            if (classroomLength == null ||
+                                classroomLength <= 0) {
+                              setDialogState(() {
+                                error = 'Enter a valid classroom length.';
+                              });
+                              return;
+                            }
+
+                            if (classroomLength > 500) {
+                              setDialogState(() {
+                                error =
+                                    'Classroom length cannot exceed 500 metres.';
+                              });
+                              return;
+                            }
+
+                            // --------------------------------------
+                            // WIDTH VALIDATION
+                            // --------------------------------------
+
+                            if (classroomWidth == null || classroomWidth <= 0) {
+                              setDialogState(() {
+                                error = 'Enter a valid classroom width.';
+                              });
+                              return;
+                            }
+
+                            if (classroomWidth > 500) {
+                              setDialogState(() {
+                                error =
+                                    'Classroom width cannot exceed 500 metres.';
+                              });
+                              return;
+                            }
+
+                            // --------------------------------------
+                            // COLLECT 5 GPS READINGS
+                            // --------------------------------------
+
+                            setDialogState(() {
+                              gettingLocation = true;
+                              error =
+                                  'Collecting 5 high-accuracy GPS readings...';
+                              stableLocation = null;
+                            });
+
+                            final capturedLocation =
+                                await captureStableTeacherLocation((
+                                  completed,
+                                  total,
+                                ) {
+                                  if (!dialogBuildContext.mounted) {
+                                    return;
+                                  }
+
+                                  setDialogState(() {
+                                    error =
+                                        'Collecting accurate classroom centre...\n'
+                                        'GPS reading $completed of $total';
+                                  });
+                                });
+
+                            if (!dialogBuildContext.mounted) {
+                              return;
+                            }
+
+                            if (capturedLocation == null) {
+                              setDialogState(() {
+                                gettingLocation = false;
+                                error =
+                                    'Unable to obtain 5 reliable GPS readings.\n'
+                                    'Move to the classroom centre and ensure mock GPS is disabled.';
+                              });
+
+                              return;
+                            }
+
+                            stableLocation = capturedLocation;
+
+                            setDialogState(() {
+                              gettingLocation = false;
+                              error = 'Location verified ✓';
+                            });
+
+                            // --------------------------------------
+                            // CLOSE DIALOG
+                            // --------------------------------------
 
                             Navigator.pop(dialogContext);
+
+                            // --------------------------------------
+                            // CREATE SESSION
+                            // --------------------------------------
 
                             await _startSession(
                               subjectName: subject,
@@ -3424,18 +2663,22 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                               semester: semester,
                               division: division,
                               durationMinutes: duration,
-                              classroomLength: finalLength,
-                              classroomWidth: finalWidth,
+                              classroomLength: classroomLength,
+                              classroomWidth: classroomWidth,
                               location: capturedLocation,
                             );
                           },
-                    icon: Icon(
-                      currentStep == 2
-                          ? Icons.play_arrow_rounded
-                          : Icons.arrow_forward_rounded,
-                    ),
+                    icon: gettingLocation
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.play_arrow),
                     label: Text(
-                      currentStep == 2 ? 'START ATTENDANCE' : 'CONTINUE',
+                      gettingLocation
+                          ? 'VERIFYING LOCATION...'
+                          : 'START ATTENDANCE',
                     ),
                   ),
                 ],
@@ -3613,18 +2856,9 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
           _remainingTime = Duration(minutes: durationMinutes);
 
           _statusMessage = 'Attendance session is active.';
-
-          // Reset live monitoring for the newly created session.
-          _livePresentCount = 0;
-          _liveLateCount = 0;
-          _liveRejectedCount = 0;
-          _liveTotalStudents = 0;
-          _liveRecentActivity = [];
-          _lastAttendanceRefresh = null;
         });
 
         _startCountdown();
-        _startLiveAttendanceRefresh();
 
         return;
       }
@@ -3716,8 +2950,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     }
 
     _countdownTimer?.cancel();
-    _attendanceRefreshTimer?.cancel();
-    _attendanceRefreshTimer = null;
 
     if (_sessionId == null) {
       if (!mounted) return;
@@ -3787,8 +3019,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         data: _qrData!,
         version: QrVersions.auto,
         gapless: true,
-        color: Colors.black,
-        emptyColor: Colors.white,
       );
 
       final ByteData? byteData = await painter.toImageData(
@@ -3830,167 +3060,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
 
       debugPrint('QR SHARE ERROR: $e');
     }
-  }
-
-  // ==========================================================
-  // LIVE ATTENDANCE MONITORING
-  // ==========================================================
-
-  void _startLiveAttendanceRefresh() {
-    _attendanceRefreshTimer?.cancel();
-
-    // Fetch immediately, then refresh every 5 seconds while the
-    // session is active. The existing faculty report endpoint is
-    // used so no new backend API is required for this UI phase.
-    _refreshLiveAttendance();
-    _attendanceRefreshTimer = Timer.periodic(
-      const Duration(seconds: 5),
-      (_) => _refreshLiveAttendance(),
-    );
-  }
-
-  Future<void> _refreshLiveAttendance({bool manual = false}) async {
-    if (!_sessionActive || _sessionId == null || _attendanceRefreshing) {
-      return;
-    }
-
-    if (manual) {
-      setState(() => _attendanceRefreshing = true);
-    } else {
-      _attendanceRefreshing = true;
-    }
-
-    try {
-      final response = await http.get(
-        Uri.parse('$backendUrl/faculty/attendance-report/${widget.userId}'),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Server returned ${response.statusCode}');
-      }
-
-      final decoded = jsonDecode(response.body);
-      final session = _findLiveSession(decoded, _sessionId!);
-
-      if (session == null) {
-        _attendanceRefreshing = false;
-        if (manual && mounted) setState(() {});
-        return;
-      }
-
-      final summaryValue = session['summary'];
-      final summary = summaryValue is Map
-          ? Map<String, dynamic>.from(summaryValue)
-          : <String, dynamic>{};
-
-      final studentsValue = session['students'];
-      final students = studentsValue is List
-          ? List<dynamic>.from(studentsValue)
-          : <dynamic>[];
-
-      int total = _liveTotalStudents;
-      int present = _toIntValue(
-        summary['present'] ?? session['present'] ?? session['present_count'],
-      );
-      int late = _toIntValue(
-        summary['late'] ?? session['late'] ?? session['late_count'],
-      );
-      int rejected = _toIntValue(
-        summary['rejected'] ?? session['rejected'] ?? session['rejected_count'],
-      );
-
-      if (students.isNotEmpty) {
-        total = students.length;
-        present = 0;
-        late = 0;
-
-        for (final item in students) {
-          if (item is! Map) continue;
-          final status = _toStringValue(item['status']).toLowerCase().trim();
-          if (status == 'present') {
-            present++;
-          } else if (status == 'late') {
-            late++;
-          }
-        }
-      }
-
-      if (total < present + late + rejected) {
-        total = present + late + rejected;
-      }
-
-      final recent = <Map<String, dynamic>>[];
-      for (final item in students) {
-        if (item is! Map) continue;
-        final map = Map<String, dynamic>.from(item);
-        final status = _toStringValue(map['status']).toLowerCase().trim();
-        if (status == 'present' || status == 'late' || status == 'rejected') {
-          recent.add(map);
-        }
-      }
-
-      recent.sort((a, b) {
-        final aTime = _toStringValue(
-          a['marked_at'] ?? a['created_at'] ?? a['attendance_time'],
-        );
-        final bTime = _toStringValue(
-          b['marked_at'] ?? b['created_at'] ?? b['attendance_time'],
-        );
-        return bTime.compareTo(aTime);
-      });
-
-      if (!mounted) return;
-
-      setState(() {
-        _liveTotalStudents = total;
-        _livePresentCount = present;
-        _liveLateCount = late;
-        _liveRejectedCount = rejected;
-        _liveRecentActivity = recent.take(5).toList();
-        _lastAttendanceRefresh = DateTime.now();
-        _attendanceRefreshing = false;
-      });
-    } catch (e) {
-      _attendanceRefreshing = false;
-      debugPrint('LIVE ATTENDANCE REFRESH ERROR: $e');
-      if (manual && mounted) setState(() {});
-    }
-  }
-
-  Map<String, dynamic>? _findLiveSession(dynamic value, int sessionId) {
-    if (value is Map) {
-      final map = Map<String, dynamic>.from(value);
-      final candidates = [
-        map['id'],
-        map['session_id'],
-        map['attendance_session_id'],
-      ];
-      if (candidates.any((v) => v?.toString() == sessionId.toString())) {
-        return map;
-      }
-
-      for (final entry in map.values) {
-        final found = _findLiveSession(entry, sessionId);
-        if (found != null) return found;
-      }
-    } else if (value is List) {
-      for (final item in value) {
-        final found = _findLiveSession(item, sessionId);
-        if (found != null) return found;
-      }
-    }
-    return null;
-  }
-
-  int _toIntValue(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    return int.tryParse(value?.toString() ?? '') ?? 0;
-  }
-
-  String _toStringValue(dynamic value) {
-    if (value == null || value.toString() == 'null') return '';
-    return value.toString();
   }
 
   // ==========================================================
@@ -4058,12 +3127,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         ? 1
         : _sessionEndTime!.difference(DateTime.now()).inSeconds.clamp(1, 86400);
     final progress = (remainingSeconds / totalSeconds).clamp(0.0, 1.0);
-    final markedCount = _livePresentCount + _liveLateCount;
-    final notMarked = (_liveTotalStudents - markedCount - _liveRejectedCount)
-        .clamp(0, 999999);
-    final attendanceRate = _liveTotalStudents > 0
-        ? (markedCount / _liveTotalStudents) * 100
-        : 0.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -4170,15 +3233,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                       version: QrVersions.auto,
                       size: 230,
                       backgroundColor: Colors.white,
-                      eyeStyle: const QrEyeStyle(
-                        eyeShape: QrEyeShape.square,
-                        color: Colors.black,
-                      ),
-                      dataModuleStyle: const QrDataModuleStyle(
-                        dataModuleShape: QrDataModuleShape.square,
-                        color: Colors.black,
-                      ),
-                      errorCorrectionLevel: QrErrorCorrectLevel.H,
                     ),
                   ),
                 const SizedBox(height: 14),
@@ -4194,157 +3248,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                 Text(
                   '$_subjectCode • Semester $_semester • Division $_division',
                   textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 18),
-
-                // ------------------------------------------------
-                // LIVE ATTENDANCE COUNTERS
-                // ------------------------------------------------
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Attendance monitor',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Refresh attendance',
-                        onPressed: _attendanceRefreshing
-                            ? null
-                            : () => _refreshLiveAttendance(manual: true),
-                        icon: _attendanceRefreshing
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.refresh),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _liveCountCard(
-                        icon: Icons.check_circle_rounded,
-                        label: 'Present',
-                        value: _livePresentCount,
-                        iconColor: Colors.green,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _liveCountCard(
-                        icon: Icons.hourglass_top_rounded,
-                        label: 'Not marked',
-                        value: notMarked,
-                        iconColor: Colors.orange,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _liveCountCard(
-                        icon: Icons.block_rounded,
-                        label: 'Rejected',
-                        value: _liveRejectedCount,
-                        iconColor: Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.groups_rounded),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Attendance rate',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            Text(
-                              '${attendanceRate.toStringAsFixed(0)}%',
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        '$_livePresentCount${_liveLateCount > 0 ? ' + $_liveLateCount late' : ''} / $_liveTotalStudents',
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 18),
-
-                // ------------------------------------------------
-                // RECENT ACTIVITY
-                // ------------------------------------------------
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Recent activity',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (_liveRecentActivity.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.hourglass_empty_rounded),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Waiting for students to mark attendance...',
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  ..._liveRecentActivity.map(_liveActivityTile),
-
-                const SizedBox(height: 18),
-                ClassroomGeofencePreview(
-                  length: _classroomLength,
-                  width: _classroomWidth,
-                  accuracy: _teacherPosition?.accuracy,
-                  verified: true,
-                  compact: true,
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -4367,19 +3270,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _lastAttendanceRefresh == null
-                        ? 'Live monitor starting...'
-                        : 'Updated ${_formatTime(_lastAttendanceRefresh!)}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -4432,121 +3322,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     );
   }
 
-  Widget _liveCountCard({
-    required IconData icon,
-    required String label,
-    required int value,
-    required Color iconColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: iconColor, size: 22),
-          const SizedBox(height: 5),
-          Text(
-            '$value',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-          ),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 10),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _liveActivityTile(Map<String, dynamic> student) {
-    final status = _toStringValue(student['status']).toLowerCase().trim();
-    final name = _toStringValue(
-      student['full_name'] ??
-          student['name'] ??
-          student['student_name'] ??
-          student['student_id'],
-    );
-    final usn = _toStringValue(
-      student['student_id'] ?? student['usn'] ?? student['username'],
-    );
-    final time = _toStringValue(
-      student['marked_at'] ??
-          student['created_at'] ??
-          student['attendance_time'],
-    );
-
-    final isLate = status == 'late';
-    final isRejected = status == 'rejected';
-    final iconColor = isRejected
-        ? Colors.red
-        : (isLate ? Colors.orange : Colors.green);
-    final icon = isRejected
-        ? Icons.block_rounded
-        : (isLate ? Icons.schedule_rounded : Icons.check_circle_rounded);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 7),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: iconColor, size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name.isEmpty ? 'Student' : name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                Text(
-                  isRejected
-                      ? 'Attendance rejected'
-                      : (isLate
-                            ? 'Attendance marked late'
-                            : 'Attendance verified'),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (usn.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 6),
-              child: Text(
-                usn,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          if (time.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Text(
-                time.length > 16 ? time.substring(time.length - 8) : time,
-                style: const TextStyle(fontSize: 10),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _sessionStat(IconData icon, String label, String value) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -4596,11 +3371,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         centerTitle: false,
         actions: [
           IconButton(
-            tooltip: 'Notifications',
-            onPressed: _openFacultyNotifications,
-            icon: const Icon(Icons.notifications_none_rounded),
-          ),
-          IconButton(
             tooltip: 'Profile',
             onPressed: () => setState(() => _selectedTab = 1),
             icon: const Icon(Icons.account_circle_outlined),
@@ -4642,51 +3412,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
             label: 'Reports',
           ),
         ],
-      ),
-    );
-  }
-
-  void _openFacultySecurity() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FacultySecurityCenterPage(
-          username: widget.username,
-          sessionActive: _sessionActive,
-          presentCount: _livePresentCount,
-          rejectedCount: _liveRejectedCount,
-        ),
-      ),
-    );
-  }
-
-  void _openFacultyAnalytics() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FacultyAnalyticsPage(userId: widget.userId),
-      ),
-    );
-  }
-
-  void _openFacultyHistory() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FacultySessionHistoryPage(userId: widget.userId),
-      ),
-    );
-  }
-
-  void _openFacultyNotifications() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FacultyNotificationsPage(
-          sessionActive: _sessionActive,
-          presentCount: _livePresentCount,
-          rejectedCount: _liveRejectedCount,
-        ),
       ),
     );
   }
@@ -4827,47 +3552,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Faculty tools',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: _openFacultySecurity,
-                          icon: const Icon(Icons.security_rounded),
-                          label: const Text('Security Center'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: _openFacultyAnalytics,
-                          icon: const Icon(Icons.insights_rounded),
-                          label: const Text('Analytics'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: _openFacultyHistory,
-                          icon: const Icon(Icons.history_rounded),
-                          label: const Text('Session History'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ],
           const SizedBox(height: 14),
           if (_statusMessage.isNotEmpty)
@@ -4976,38 +3660,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
               ],
             ),
           ),
-          Card(
-            elevation: 0,
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.notifications_none_rounded),
-                  title: const Text('Notifications'),
-                  subtitle: const Text('Session and attendance alerts'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: _openFacultyNotifications,
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.security_rounded),
-                  title: const Text('Security Center'),
-                  subtitle: const Text(
-                    'Verification layers and security events',
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: _openFacultySecurity,
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.history_rounded),
-                  title: const Text('Session History'),
-                  subtitle: const Text('Review completed attendance sessions'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: _openFacultyHistory,
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: 18),
           OutlinedButton.icon(
             onPressed: _sessionActive ? null : _logout,
@@ -5037,872 +3689,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
 
     return '${minutes.toString().padLeft(2, '0')}:'
         '${seconds.toString().padLeft(2, '0')}';
-  }
-}
-
-// ============================================================
-// FACULTY SECURITY CENTER
-// ============================================================
-class FacultySecurityCenterPage extends StatelessWidget {
-  final String username;
-  final bool sessionActive;
-  final int presentCount;
-  final int rejectedCount;
-
-  const FacultySecurityCenterPage({
-    super.key,
-    required this.username,
-    required this.sessionActive,
-    required this.presentCount,
-    required this.rejectedCount,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final layers = [
-      (
-        'Dynamic QR',
-        'Unique session token protects the attendance session.',
-        Icons.qr_code_2_rounded,
-      ),
-      (
-        '5-point GPS',
-        'Multiple readings establish a stable verification point.',
-        Icons.gps_fixed_rounded,
-      ),
-      (
-        'Mock GPS detection',
-        'Simulated location signals are rejected by the existing flow.',
-        Icons.location_disabled_rounded,
-      ),
-      (
-        'Rectangular geofence',
-        'Students must be inside the configured classroom boundary.',
-        Icons.crop_square_rounded,
-      ),
-      (
-        'Face verification',
-        'Student identity verification remains part of attendance.',
-        Icons.face_retouching_natural_rounded,
-      ),
-      (
-        'Duplicate prevention',
-        'Repeated attendance for the same session is blocked.',
-        Icons.block_rounded,
-      ),
-    ];
-    return Scaffold(
-      appBar: AppBar(title: const Text('Faculty Security Center')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: scheme.primaryContainer,
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 26,
-                  child: Text(
-                    username.isEmpty
-                        ? 'F'
-                        : username.substring(0, 1).toUpperCase(),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'AntiProxy Security',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        sessionActive
-                            ? 'Live session protected'
-                            : 'Protection layers ready',
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.verified_rounded, color: scheme.primary, size: 32),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _metric(
-                  context,
-                  'Present',
-                  presentCount.toString(),
-                  Icons.how_to_reg_rounded,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _metric(
-                  context,
-                  'Rejected',
-                  rejectedCount.toString(),
-                  Icons.gpp_bad_rounded,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            'Verification layers',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 10),
-          ...layers.map(
-            (item) => Card(
-              elevation: 0,
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: CircleAvatar(child: Icon(item.$3, size: 21)),
-                title: Text(
-                  item.$1,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(item.$2),
-                trailing: const Icon(Icons.check_circle_rounded),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            elevation: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Security activity',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
-                  ),
-                  const SizedBox(height: 10),
-                  _event(
-                    Icons.qr_code_2_rounded,
-                    'QR session protection',
-                    'Dynamic QR is used for the active session.',
-                  ),
-                  _event(
-                    Icons.location_on_rounded,
-                    'Location protection',
-                    'Teacher and student location validation remain enabled.',
-                  ),
-                  _event(
-                    Icons.face_rounded,
-                    'Identity protection',
-                    'Face verification remains part of attendance marking.',
-                  ),
-                  _event(
-                    Icons.crop_square_rounded,
-                    'Boundary protection',
-                    'Rectangular classroom geofence is enforced server-side.',
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _metric(
-    BuildContext context,
-    String label,
-    String value,
-    IconData icon,
-  ) {
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Icon(icon),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  Text(label),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _event(IconData icon, String title, String subtitle) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                Text(subtitle, style: const TextStyle(fontSize: 12)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================
-// FACULTY ANALYTICS
-// ============================================================
-class FacultyAnalyticsPage extends StatefulWidget {
-  final dynamic userId;
-  const FacultyAnalyticsPage({super.key, required this.userId});
-  @override
-  State<FacultyAnalyticsPage> createState() => _FacultyAnalyticsPageState();
-}
-
-class _FacultyAnalyticsPageState extends State<FacultyAnalyticsPage> {
-  bool _loading = true;
-  String? _error;
-  List<Map<String, dynamic>> _reports = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final response = await http.get(
-        Uri.parse('$backendUrl/faculty/attendance-report/${widget.userId}'),
-      );
-      if (response.statusCode != 200)
-        throw Exception('Server returned ${response.statusCode}.');
-      final decoded = jsonDecode(response.body);
-      final raw = decoded is List
-          ? decoded
-          : (decoded is Map && decoded['reports'] is List
-                ? decoded['reports']
-                : decoded is Map && decoded['data'] is List
-                ? decoded['data']
-                : <dynamic>[]);
-      _reports = raw
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
-      if (mounted) setState(() => _loading = false);
-    } catch (e) {
-      if (mounted)
-        setState(() {
-          _loading = false;
-          _error = e.toString();
-        });
-    }
-  }
-
-  double _num(dynamic v) => double.tryParse(v?.toString() ?? '') ?? 0;
-  int _int(dynamic v) => int.tryParse(v?.toString() ?? '') ?? 0;
-
-  @override
-  Widget build(BuildContext context) {
-    final sessions = _reports.length;
-    int present = 0, total = 0;
-    for (final r in _reports) {
-      present += _int(r['present'] ?? r['present_count']);
-      total += _int(r['total'] ?? r['total_students']);
-    }
-    final rate = total == 0 ? 0.0 : present * 100 / total;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Faculty Analytics'),
-        actions: [
-          IconButton(
-            onPressed: _loading ? null : _load,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.cloud_off_rounded, size: 48),
-                    const SizedBox(height: 12),
-                    Text(_error!, textAlign: TextAlign.center),
-                    const SizedBox(height: 12),
-                    FilledButton(onPressed: _load, child: const Text('Retry')),
-                  ],
-                ),
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _stat(
-                          context,
-                          'Sessions',
-                          sessions.toString(),
-                          Icons.calendar_month_rounded,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _stat(
-                          context,
-                          'Present',
-                          present.toString(),
-                          Icons.how_to_reg_rounded,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  _stat(
-                    context,
-                    'Average attendance',
-                    '${rate.toStringAsFixed(1)}%',
-                    Icons.insights_rounded,
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Attendance overview',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 10),
-                  Card(
-                    elevation: 0,
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${rate.toStringAsFixed(1)}%',
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          LinearProgressIndicator(
-                            value: (rate / 100).clamp(0, 1),
-                            minHeight: 10,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '$present verified attendance records across the available report data.',
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  const Text(
-                    'Sessions',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 8),
-                  ..._reports.asMap().entries.map(
-                    (entry) => _reportCard(context, entry.value, entry.key + 1),
-                  ),
-                  if (_reports.isEmpty)
-                    const Card(
-                      elevation: 0,
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Text('No report data is available yet.'),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-    );
-  }
-
-  Widget _stat(
-    BuildContext context,
-    String title,
-    String value,
-    IconData icon,
-  ) => Card(
-    elevation: 0,
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Icon(icon),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(title),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  Widget _reportCard(BuildContext context, Map<String, dynamic> r, int n) {
-    final subject =
-        (r['subject_name'] ?? r['subject'] ?? r['subject_code'] ?? 'Session')
-            .toString();
-    final date = (r['attendance_date'] ?? r['date'] ?? '').toString();
-    final p = _int(r['present'] ?? r['present_count']);
-    final t = _int(r['total'] ?? r['total_students']);
-    final pct = t == 0 ? 0.0 : p * 100 / t;
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(child: Text('$n')),
-        title: Text(
-          subject,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text(
-          date.isEmpty ? '$p / $t present' : '$date • $p / $t present',
-        ),
-        trailing: Text(
-          '${pct.toStringAsFixed(0)}%',
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================
-// FACULTY SESSION HISTORY + STUDENT DETAILS
-// ============================================================
-class FacultySessionHistoryPage extends StatefulWidget {
-  final dynamic userId;
-
-  const FacultySessionHistoryPage({super.key, required this.userId});
-
-  @override
-  State<FacultySessionHistoryPage> createState() =>
-      _FacultySessionHistoryPageState();
-}
-
-class _FacultySessionHistoryPageState extends State<FacultySessionHistoryPage> {
-  bool _loading = true;
-  String? _error;
-
-  List<Map<String, dynamic>> _reports = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
-    }
-
-    try {
-      final response = await http.get(
-        Uri.parse('$backendUrl/faculty/attendance-report/${widget.userId}'),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Server returned ${response.statusCode}.');
-      }
-
-      final decoded = jsonDecode(response.body);
-
-      final dynamic raw = decoded is List
-          ? decoded
-          : decoded is Map && decoded['reports'] is List
-          ? decoded['reports']
-          : decoded is Map && decoded['data'] is List
-          ? decoded['data']
-          : <dynamic>[];
-
-      _reports = raw is List
-          ? raw
-                .whereType<Map>()
-                .map((item) => Map<String, dynamic>.from(item))
-                .toList()
-          : <Map<String, dynamic>>[];
-
-      if (mounted) {
-        setState(() {
-          _loading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = e.toString();
-        });
-      }
-    }
-  }
-
-  // Safely converts the JSON "students" array into
-  // List<Map<String, dynamic>>.
-  List<Map<String, dynamic>> _studentList(dynamic value) {
-    if (value is! List) {
-      return <Map<String, dynamic>>[];
-    }
-
-    return value
-        .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
-        .toList();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Session History'),
-        actions: [
-          IconButton(
-            onPressed: _loading ? null : _load,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.cloud_off_rounded, size: 48),
-                    const SizedBox(height: 12),
-                    Text(_error!, textAlign: TextAlign.center),
-                    const SizedBox(height: 12),
-                    FilledButton(onPressed: _load, child: const Text('Retry')),
-                  ],
-                ),
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  const Text(
-                    'Completed attendance sessions',
-                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 12),
-
-                  ..._reports.asMap().entries.map((entry) {
-                    final r = entry.value;
-
-                    final subject =
-                        (r['subject_name'] ??
-                                r['subject'] ??
-                                r['subject_code'] ??
-                                'Session')
-                            .toString();
-
-                    final date = (r['attendance_date'] ?? r['date'] ?? '')
-                        .toString();
-
-                    // IMPORTANT:
-                    // Convert List<dynamic> from JSON into
-                    // List<Map<String, dynamic>> before passing
-                    // it to the student details page.
-                    final studentList = _studentList(r['students']);
-
-                    final count = studentList.length;
-
-                    return Card(
-                      elevation: 0,
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.event_note_rounded),
-                        ),
-                        title: Text(
-                          subject,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: Text(
-                          date.isEmpty ? 'Session ${entry.key + 1}' : date,
-                        ),
-                        trailing: Text(
-                          '$count\nstudents',
-                          textAlign: TextAlign.center,
-                        ),
-                        onTap: studentList.isNotEmpty
-                            ? () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        FacultySessionStudentDetailsPage(
-                                          subject: subject,
-                                          date: date,
-                                          students: studentList,
-                                        ),
-                                  ),
-                                );
-                              }
-                            : null,
-                      ),
-                    );
-                  }),
-
-                  if (_reports.isEmpty)
-                    const Card(
-                      elevation: 0,
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Text('No session history is available yet.'),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-    );
-  }
-}
-
-// ============================================================
-// FACULTY SESSION STUDENT DETAILS
-// ============================================================
-class FacultySessionStudentDetailsPage extends StatelessWidget {
-  final String subject;
-  final String date;
-  final List<dynamic> students;
-  const FacultySessionStudentDetailsPage({
-    super.key,
-    required this.subject,
-    required this.date,
-    required this.students,
-  });
-  @override
-  Widget build(BuildContext context) {
-    int present = 0, absent = 0, late = 0;
-    for (final item in students) {
-      if (item is! Map) continue;
-      final status = (item['status'] ?? '').toString().toLowerCase();
-      if (status == 'present')
-        present++;
-      else if (status == 'late')
-        late++;
-      else
-        absent++;
-    }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Student Attendance Details')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            elevation: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    subject,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  if (date.isNotEmpty) Text(date),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Chip(label: Text('Present $present')),
-                      Chip(label: Text('Late $late')),
-                      Chip(label: Text('Absent $absent')),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          ...students.whereType<Map>().map((raw) {
-            final m = Map<String, dynamic>.from(raw);
-            final name =
-                (m['full_name'] ??
-                        m['name'] ??
-                        m['student_name'] ??
-                        m['student_id'] ??
-                        'Student')
-                    .toString();
-            final usn = (m['student_id'] ?? m['usn'] ?? '').toString();
-            final status = (m['status'] ?? '').toString();
-            final ok =
-                status.toLowerCase() == 'present' ||
-                status.toLowerCase() == 'late';
-            return Card(
-              elevation: 0,
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: CircleAvatar(
-                  child: Icon(
-                    ok ? Icons.verified_rounded : Icons.person_outline_rounded,
-                  ),
-                ),
-                title: Text(
-                  name,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(usn.isEmpty ? status : '$usn • $status'),
-                trailing: Icon(
-                  ok ? Icons.check_circle_rounded : Icons.cancel_rounded,
-                ),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================
-// FACULTY NOTIFICATIONS
-// ============================================================
-class FacultyNotificationsPage extends StatelessWidget {
-  final bool sessionActive;
-  final int presentCount;
-  final int rejectedCount;
-  const FacultyNotificationsPage({
-    super.key,
-    required this.sessionActive,
-    required this.presentCount,
-    required this.rejectedCount,
-  });
-  @override
-  Widget build(BuildContext context) {
-    final items = <Map<String, dynamic>>[
-      if (sessionActive)
-        {
-          'icon': Icons.play_circle_fill_rounded,
-          'title': 'Attendance session is live',
-          'subtitle': '$presentCount students currently marked.',
-        },
-      if (rejectedCount > 0)
-        {
-          'icon': Icons.warning_amber_rounded,
-          'title': 'Attendance attempts rejected',
-          'subtitle':
-              '$rejectedCount rejection(s) reported by the current live session.',
-        },
-      {
-        'icon': Icons.security_rounded,
-        'title': 'Security protection active',
-        'subtitle':
-            'QR, GPS, mock-location, geofence and face verification remain enabled.',
-      },
-      {
-        'icon': Icons.info_outline_rounded,
-        'title': 'AntiProxy system',
-        'subtitle':
-            'Attendance actions are validated through the configured backend.',
-      },
-    ];
-    return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (items.isEmpty)
-            const Card(
-              elevation: 0,
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Text('No notifications.'),
-              ),
-            ),
-          ...items.map(
-            (item) => Card(
-              elevation: 0,
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: CircleAvatar(child: Icon(item['icon'] as IconData)),
-                title: Text(
-                  item['title'] as String,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(item['subtitle'] as String),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -11224,62 +9010,35 @@ class _AttendancePageState extends State<AttendancePage> {
       // AUTHENTICATION FAILURE
       // ======================================================
 
-      // ======================================================
-// AUTHENTICATION FAILURE
-// ======================================================
+      if (response.statusCode == 401) {
+        if (!mounted) return;
 
-if (response.statusCode == 401) {
-  debugPrint(
-    'ATTENDANCE AUTHENTICATION FAILED: '
-    '${response.body}',
-  );
+        setState(() {
+          _processing = false;
+          _statusMessage = 'Session expired. Please login again.';
+        });
 
-  final prefs = await SharedPreferences.getInstance();
+        await showDialog(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Authentication Required'),
+            content: const Text(
+              'Your login session has expired.\n\n'
+              'Please login again before marking attendance.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
 
-  // Remove only the invalid authentication session.
-  await prefs.remove('auth_token');
-  await prefs.remove('user_role');
-  await prefs.remove('username');
-  await prefs.remove('user_id');
-
-  if (!mounted) return;
-
-  setState(() {
-    _processing = false;
-    _statusMessage =
-        'Your login session is no longer valid. Please login again.';
-  });
-
-  await showDialog(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Login Required'),
-      content: const Text(
-        'Your authentication session is no longer valid.\n\n'
-        'Please login again to continue marking attendance.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.pop(dialogContext);
-          },
-          child: const Text('OK'),
-        ),
-      ],
-    ),
-  );
-
-  if (!mounted) return;
-
-  Navigator.of(context).pushAndRemoveUntil(
-    MaterialPageRoute(
-      builder: (_) => LoginPage(cameras: widget.cameras),
-    ),
-    (route) => false,
-  );
-
-  return;
-}
+        return;
+      }
 
       // ======================================================
       // ATTENDANCE SUCCESS

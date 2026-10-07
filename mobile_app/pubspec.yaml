@@ -1,5 +1,7 @@
 name: mobile_app
+
 description: "A new Flutter project."
+
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -11,6 +13,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+  shared_preferences: ^2.5.3
   cupertino_icons: ^1.0.8
   camera: ^0.11.1+2
   http: ^1.6.0
@@ -20,12 +23,25 @@ dependencies:
   share_plus: ^13.3.0
   path_provider: ^2.1.6
   mobile_scanner: ^7.4.0
+  pdf: ^3.13.0
+  printing: ^5.15.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/app_logo.png
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/app_logo.png"
+  adaptive_icon_background: "#071525"
+  adaptive_icon_foreground: "assets/app_logo.png"

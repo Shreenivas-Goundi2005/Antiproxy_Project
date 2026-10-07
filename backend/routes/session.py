@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from database import get_db_connection
 
 import secrets
-from datetime import datetime, date, time
+from datetime import datetime
 
 
 session_bp = Blueprint("session", __name__)
@@ -16,17 +16,11 @@ def auto_close_expired_sessions(cursor):
     """
     Automatically closes all active sessions whose end time
     has already passed.
-
-    This is called whenever session APIs are accessed.
     """
 
     now = datetime.now()
     current_date = now.date()
     current_time = now.time()
-
-    # --------------------------------------------------------
-    # Close sessions from previous dates
-    # --------------------------------------------------------
 
     cursor.execute(
         """
@@ -37,10 +31,6 @@ def auto_close_expired_sessions(cursor):
         """,
         (current_date,)
     )
-
-    # --------------------------------------------------------
-    # Close today's sessions whose end time has passed
-    # --------------------------------------------------------
 
     cursor.execute(
         """
@@ -81,6 +71,10 @@ def start_session():
         faculty_user_id = data.get("faculty_user_id")
         class_name = data.get("class_name")
         subject_name = data.get("subject_name")
+        subject_code = data.get("subject_code")
+
+        semester = data.get("semester")
+        division = data.get("division")
 
         attendance_date = data.get("attendance_date")
         start_time = data.get("start_time")
@@ -88,7 +82,11 @@ def start_session():
 
         allowed_latitude = data.get("allowed_latitude")
         allowed_longitude = data.get("allowed_longitude")
-        allowed_radius = data.get("allowed_radius", 100)
+
+        # NEW:
+        # Classroom dimensions in meters.
+        classroom_length = data.get("classroom_length")
+        classroom_width = data.get("classroom_width")
 
         # ----------------------------------------------------
         # REQUIRED FIELDS
@@ -112,6 +110,24 @@ def start_session():
                 "message": "subject_name is required"
             }), 400
 
+        if not subject_code or not str(subject_code).strip():
+            return jsonify({
+                "success": False,
+                "message": "subject_code is required"
+            }), 400
+
+        if semester is None or not str(semester).strip():
+            return jsonify({
+                "success": False,
+                "message": "semester is required"
+            }), 400
+
+        if division is None or not str(division).strip():
+            return jsonify({
+                "success": False,
+                "message": "division is required"
+            }), 400
+
         if not attendance_date:
             attendance_date = datetime.now().date().isoformat()
 
@@ -121,11 +137,30 @@ def start_session():
                 "message": "start_time and end_time are required"
             }), 400
 
-        if allowed_latitude is None or allowed_longitude is None:
+        if (
+            allowed_latitude is None
+            or allowed_longitude is None
+        ):
             return jsonify({
                 "success": False,
                 "message":
                     "allowed_latitude and allowed_longitude are required"
+            }), 400
+
+        # ----------------------------------------------------
+        # CLASSROOM DIMENSIONS
+        # ----------------------------------------------------
+
+        if classroom_length is None:
+            return jsonify({
+                "success": False,
+                "message": "classroom_length is required"
+            }), 400
+
+        if classroom_width is None:
+            return jsonify({
+                "success": False,
+                "message": "classroom_width is required"
             }), 400
 
         # ----------------------------------------------------
@@ -136,17 +171,11 @@ def start_session():
 
             faculty_user_id = int(faculty_user_id)
 
-            allowed_latitude = float(
-                allowed_latitude
-            )
+            allowed_latitude = float(allowed_latitude)
+            allowed_longitude = float(allowed_longitude)
 
-            allowed_longitude = float(
-                allowed_longitude
-            )
-
-            allowed_radius = int(
-                allowed_radius
-            )
+            classroom_length = float(classroom_length)
+            classroom_width = float(classroom_width)
 
         except (TypeError, ValueError):
 
@@ -173,11 +202,41 @@ def start_session():
                 "message": "Invalid longitude"
             }), 400
 
-        if allowed_radius <= 0:
+        # ----------------------------------------------------
+        # VALIDATE CLASSROOM DIMENSIONS
+        # ----------------------------------------------------
+
+        if classroom_length <= 0:
 
             return jsonify({
                 "success": False,
-                "message": "allowed_radius must be greater than 0"
+                "message":
+                    "classroom_length must be greater than 0"
+            }), 400
+
+        if classroom_width <= 0:
+
+            return jsonify({
+                "success": False,
+                "message":
+                    "classroom_width must be greater than 0"
+            }), 400
+
+        # Prevent unrealistic classroom dimensions.
+        if classroom_length > 500:
+
+            return jsonify({
+                "success": False,
+                "message":
+                    "classroom_length cannot exceed 500 meters"
+            }), 400
+
+        if classroom_width > 500:
+
+            return jsonify({
+                "success": False,
+                "message":
+                    "classroom_width cannot exceed 500 meters"
             }), 400
 
         # ----------------------------------------------------
@@ -225,7 +284,8 @@ def start_session():
                 return jsonify({
                     "success": False,
                     "message":
-                        "Invalid date or time format. Use YYYY-MM-DD and HH:MM or HH:MM:SS."
+                        "Invalid date or time format. "
+                        "Use YYYY-MM-DD and HH:MM or HH:MM:SS."
                 }), 400
 
         # ----------------------------------------------------
@@ -241,7 +301,7 @@ def start_session():
             }), 400
 
         # ----------------------------------------------------
-        # SESSION MUST NOT START IN THE PAST
+        # SESSION MUST NOT HAVE ALREADY ENDED
         # ----------------------------------------------------
 
         now = datetime.now()
@@ -271,9 +331,7 @@ def start_session():
 
         db = get_db_connection()
 
-        cursor = db.cursor(
-            dictionary=True
-        )
+        cursor = db.cursor(dictionary=True)
 
         # ----------------------------------------------------
         # AUTOMATICALLY CLOSE EXPIRED SESSIONS
@@ -343,7 +401,7 @@ def start_session():
             }), 409
 
         # ----------------------------------------------------
-        # GENERATE QR TOKEN
+        # GENERATE SECURE QR TOKEN
         # ----------------------------------------------------
 
         qr_token = secrets.token_urlsafe(32)
@@ -359,17 +417,27 @@ def start_session():
                 faculty_id,
                 class_name,
                 subject_name,
+                subject_code,
+                semester,
+                division,
                 attendance_date,
                 start_time,
                 end_time,
                 allowed_latitude,
                 allowed_longitude,
                 allowed_radius,
+                classroom_length,
+                classroom_width,
                 qr_token,
                 status
             )
             VALUES
             (
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
                 %s,
                 %s,
                 %s,
@@ -387,12 +455,22 @@ def start_session():
                 faculty["id"],
                 str(class_name).strip(),
                 str(subject_name).strip(),
+                str(subject_code).strip(),
+                str(semester).strip(),
+                str(division).strip(),
                 parsed_date,
                 parsed_start_time,
                 parsed_end_time,
                 allowed_latitude,
                 allowed_longitude,
-                allowed_radius,
+
+                # Kept for backward database compatibility.
+                # It is no longer used for geofencing.
+                0,
+
+                classroom_length,
+                classroom_width,
+
                 qr_token
             )
         )
@@ -414,8 +492,7 @@ def start_session():
 
             "session": {
 
-                "id":
-                    session_id,
+                "id": session_id,
 
                 "faculty_id":
                     faculty["id"],
@@ -435,6 +512,15 @@ def start_session():
                 "subject_name":
                     str(subject_name).strip(),
 
+                "subject_code":
+                    str(subject_code).strip(),
+
+                "semester":
+                    str(semester).strip(),
+
+                "division":
+                    str(division).strip(),
+
                 "attendance_date":
                     str(parsed_date),
 
@@ -450,8 +536,11 @@ def start_session():
                 "allowed_longitude":
                     allowed_longitude,
 
-                "allowed_radius":
-                    allowed_radius,
+                "classroom_length":
+                    classroom_length,
+
+                "classroom_width":
+                    classroom_width,
 
                 "qr_token":
                     qr_token,
@@ -469,8 +558,10 @@ def start_session():
 
         return jsonify({
             "success": False,
-            "message": "Could not start attendance session",
-            "error": str(error)
+            "message":
+                "Could not start attendance session",
+            "error":
+                str(error)
         }), 500
 
     finally:
@@ -499,13 +590,7 @@ def close_session(session_id):
 
         db = get_db_connection()
 
-        cursor = db.cursor(
-            dictionary=True
-        )
-
-        # ----------------------------------------------------
-        # FIND SESSION
-        # ----------------------------------------------------
+        cursor = db.cursor(dictionary=True)
 
         cursor.execute(
             """
@@ -514,12 +599,17 @@ def close_session(session_id):
                 faculty_id,
                 class_name,
                 subject_name,
+                subject_code,
+                semester,
+                division,
                 attendance_date,
                 start_time,
                 end_time,
                 allowed_latitude,
                 allowed_longitude,
                 allowed_radius,
+                classroom_length,
+                classroom_width,
                 qr_token,
                 status
             FROM attendance_sessions
@@ -538,10 +628,6 @@ def close_session(session_id):
                     "Attendance session not found"
             }), 404
 
-        # ----------------------------------------------------
-        # ALREADY CLOSED
-        # ----------------------------------------------------
-
         if session["status"] == "closed":
 
             return jsonify({
@@ -551,10 +637,6 @@ def close_session(session_id):
                 "session_id":
                     session_id
             }), 409
-
-        # ----------------------------------------------------
-        # CLOSE SESSION
-        # ----------------------------------------------------
 
         cursor.execute(
             """
@@ -566,10 +648,6 @@ def close_session(session_id):
         )
 
         db.commit()
-
-        # ----------------------------------------------------
-        # SUCCESS
-        # ----------------------------------------------------
 
         return jsonify({
 
@@ -592,33 +670,35 @@ def close_session(session_id):
                 "subject_name":
                     session["subject_name"],
 
+                "subject_code":
+                    session["subject_code"],
+
+                "semester":
+                    session["semester"],
+
+                "division":
+                    session["division"],
+
                 "attendance_date":
-                    str(
-                        session["attendance_date"]
-                    ),
+                    str(session["attendance_date"]),
 
                 "start_time":
-                    str(
-                        session["start_time"]
-                    ),
+                    str(session["start_time"]),
 
                 "end_time":
-                    str(
-                        session["end_time"]
-                    ),
+                    str(session["end_time"]),
 
                 "allowed_latitude":
-                    float(
-                        session["allowed_latitude"]
-                    ),
+                    float(session["allowed_latitude"]),
 
                 "allowed_longitude":
-                    float(
-                        session["allowed_longitude"]
-                    ),
+                    float(session["allowed_longitude"]),
 
-                "allowed_radius":
-                    session["allowed_radius"],
+                "classroom_length":
+                    float(session["classroom_length"]),
+
+                "classroom_width":
+                    float(session["classroom_width"]),
 
                 "qr_token":
                     session["qr_token"],
@@ -668,13 +748,7 @@ def get_active_session(faculty_user_id):
 
         db = get_db_connection()
 
-        cursor = db.cursor(
-            dictionary=True
-        )
-
-        # ----------------------------------------------------
-        # AUTOMATICALLY CLOSE EXPIRED SESSIONS
-        # ----------------------------------------------------
+        cursor = db.cursor(dictionary=True)
 
         auto_close_expired_sessions(cursor)
 
@@ -721,12 +795,17 @@ def get_active_session(faculty_user_id):
                 faculty_id,
                 class_name,
                 subject_name,
+                subject_code,
+                semester,
+                division,
                 attendance_date,
                 start_time,
                 end_time,
                 allowed_latitude,
                 allowed_longitude,
                 allowed_radius,
+                classroom_length,
+                classroom_width,
                 qr_token,
                 status
             FROM attendance_sessions
@@ -740,10 +819,6 @@ def get_active_session(faculty_user_id):
 
         session = cursor.fetchone()
 
-        # ----------------------------------------------------
-        # NO ACTIVE SESSION
-        # ----------------------------------------------------
-
         if not session:
 
             return jsonify({
@@ -751,10 +826,6 @@ def get_active_session(faculty_user_id):
                 "active": False,
                 "session": None
             }), 200
-
-        # ----------------------------------------------------
-        # ACTIVE SESSION
-        # ----------------------------------------------------
 
         return jsonify({
 
@@ -785,33 +856,35 @@ def get_active_session(faculty_user_id):
                 "subject_name":
                     session["subject_name"],
 
+                "subject_code":
+                    session["subject_code"],
+
+                "semester":
+                    session["semester"],
+
+                "division":
+                    session["division"],
+
                 "attendance_date":
-                    str(
-                        session["attendance_date"]
-                    ),
+                    str(session["attendance_date"]),
 
                 "start_time":
-                    str(
-                        session["start_time"]
-                    ),
+                    str(session["start_time"]),
 
                 "end_time":
-                    str(
-                        session["end_time"]
-                    ),
+                    str(session["end_time"]),
 
                 "allowed_latitude":
-                    float(
-                        session["allowed_latitude"]
-                    ),
+                    float(session["allowed_latitude"]),
 
                 "allowed_longitude":
-                    float(
-                        session["allowed_longitude"]
-                    ),
+                    float(session["allowed_longitude"]),
 
-                "allowed_radius":
-                    session["allowed_radius"],
+                "classroom_length":
+                    float(session["classroom_length"]),
+
+                "classroom_width":
+                    float(session["classroom_width"]),
 
                 "qr_token":
                     session["qr_token"],

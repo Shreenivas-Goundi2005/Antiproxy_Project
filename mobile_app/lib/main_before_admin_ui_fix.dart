@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
-import 'dart:math';
 
 import 'student_subject_registration_page.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -24,7 +23,7 @@ import 'package:share_plus/share_plus.dart';
 // BACKEND CONFIGURATION
 // ============================================================
 
-const String backendUrl = 'http://10.249.162.207:5000';
+const String backendUrl = 'http://10.252.141.207:5000';
 
 // ============================================================
 // MAIN
@@ -51,7 +50,10 @@ Future<void> main() async {
 class AntiProxyApp extends StatefulWidget {
   final List<CameraDescription> cameras;
 
-  const AntiProxyApp({super.key, required this.cameras});
+  const AntiProxyApp({
+    super.key,
+    required this.cameras,
+  });
 
   @override
   State<AntiProxyApp> createState() => _AntiProxyAppState();
@@ -109,7 +111,9 @@ class _AntiProxyAppState extends State<AntiProxyApp> {
       title: 'AntiProxy Smart Attendance',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+        ),
         useMaterial3: true,
       ),
       home: _buildStartPage(),
@@ -117,61 +121,67 @@ class _AntiProxyAppState extends State<AntiProxyApp> {
   }
 
   Widget _buildStartPage() {
-    // ----------------------------------------------------------
-    // CHECKING SAVED LOGIN
-    // ----------------------------------------------------------
-    if (_checkingLogin) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    // ----------------------------------------------------------
-    // NO SAVED TOKEN
-    // ----------------------------------------------------------
-    // User is not logged in.
-    if (_savedToken == null || _savedToken!.isEmpty) {
-      return LoginPage(cameras: widget.cameras);
-    }
-
-    // ----------------------------------------------------------
-    // STUDENT
-    // ----------------------------------------------------------
-    if (_savedRole == 'student') {
-      return StudentDashboardPage(
-        cameras: widget.cameras,
-        userId: _savedUserId,
-        username: _savedUsername ?? '',
-      );
-    }
-
-    // ----------------------------------------------------------
-    // FACULTY
-    // ----------------------------------------------------------
-    // Restore the faculty session from SharedPreferences after
-    // the app is reopened or Android recreates the app process.
-    // The faculty dashboard itself does not need a new login as
-    // long as the locally saved authentication token is present.
-    if (_savedRole == 'faculty') {
-      return FacultyDashboard(
-        cameras: widget.cameras,
-        userId: _savedUserId,
-        username: _savedUsername ?? '',
-      );
-    }
-
-    if (_savedRole == 'admin') {
-      return AdminDashboard(
-        cameras: widget.cameras,
-        userId: _savedUserId,
-        username: _savedUsername ?? 'admin',
-      );
-    }
-
-    // ----------------------------------------------------------
-    // UNKNOWN ROLE
-    // ----------------------------------------------------------
-    // If the saved role is missing or invalid, return to login.
-    return LoginPage(cameras: widget.cameras);
+  // ----------------------------------------------------------
+  // CHECKING SAVED LOGIN
+  // ----------------------------------------------------------
+  if (_checkingLogin) {
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
   }
+
+  // ----------------------------------------------------------
+  // NO SAVED TOKEN
+  // ----------------------------------------------------------
+  // User is not logged in.
+  if (_savedToken == null || _savedToken!.isEmpty) {
+    return LoginPage(
+      cameras: widget.cameras,
+    );
+  }
+
+  // ----------------------------------------------------------
+  // STUDENT
+  // ----------------------------------------------------------
+  if (_savedRole == 'student') {
+    return StudentDashboardPage(
+      cameras: widget.cameras,
+      userId: _savedUserId,
+      username: _savedUsername ?? '',
+    );
+  }
+
+  // ----------------------------------------------------------
+  // FACULTY
+  // ----------------------------------------------------------
+  // There is currently no FacultyDashboardPage class in
+  // main.dart, so do not reference a non-existent class here.
+  //
+  // The existing faculty login/navigation remains unchanged.
+  if (_savedRole == 'faculty') {
+  return LoginPage(
+    cameras: widget.cameras,
+  );
+}
+
+if (_savedRole == 'admin') {
+  return AdminDashboard(
+    cameras: widget.cameras,
+    userId: _savedUserId,
+    username: _savedUsername ?? 'admin',
+  );
+}
+
+  // ----------------------------------------------------------
+  // UNKNOWN ROLE
+  // ----------------------------------------------------------
+  // If the saved role is missing or invalid, return to login.
+  return LoginPage(
+    cameras: widget.cameras,
+  );
+}
 }
 
 // ============================================================
@@ -181,16 +191,21 @@ class _AntiProxyAppState extends State<AntiProxyApp> {
 class LoginPage extends StatefulWidget {
   final List<CameraDescription> cameras;
 
-  const LoginPage({super.key, required this.cameras});
+  const LoginPage({
+    super.key,
+    required this.cameras,
+  });
 
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _usernameController =
+      TextEditingController();
 
-  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _passwordController =
+      TextEditingController();
 
   bool _loading = false;
   bool _obscurePassword = true;
@@ -235,8 +250,13 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final response = await http.post(
         Uri.parse('$backendUrl/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username, 'password': password}),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'username': username,
+          'password': password,
+        }),
       );
 
       Map<String, dynamic> data = {};
@@ -259,7 +279,8 @@ class _LoginPageState extends State<LoginPage> {
       // LOGIN SUCCESS
       // ========================================================
 
-      if (response.statusCode == 200 && data['success'] == true) {
+      if (response.statusCode == 200 &&
+          data['success'] == true) {
         final user = data['user'] is Map
             ? Map<String, dynamic>.from(data['user'])
             : <String, dynamic>{};
@@ -268,32 +289,39 @@ class _LoginPageState extends State<LoginPage> {
 
         final userId = user['id'];
 
-        final loggedUsername = user['username']?.toString() ?? username;
+        final loggedUsername =
+            user['username']?.toString() ?? username;
 
         // ------------------------------------------------------
         // ROLE VALIDATION
         // ------------------------------------------------------
 
-        if (_selectedRole == 'student' && role != 'student') {
+        if (_selectedRole == 'student' &&
+            role != 'student') {
           setState(() {
             _loading = false;
-            _message = 'This account is not a student account.';
+            _message =
+                'This account is not a student account.';
           });
           return;
         }
 
-        if (_selectedRole == 'faculty' && role != 'faculty') {
+        if (_selectedRole == 'faculty' &&
+            role != 'faculty') {
           setState(() {
             _loading = false;
-            _message = 'This account is not a teacher account.';
+            _message =
+                'This account is not a teacher account.';
           });
           return;
         }
 
-        if (_selectedRole == 'admin' && role != 'admin') {
+        if (_selectedRole == 'admin' &&
+            role != 'admin') {
           setState(() {
             _loading = false;
-            _message = 'This account is not an admin account.';
+            _message =
+                'This account is not an admin account.';
           });
           return;
         }
@@ -307,7 +335,8 @@ class _LoginPageState extends State<LoginPage> {
         if (token == null || token.isEmpty) {
           setState(() {
             _loading = false;
-            _message = 'Login failed: authentication token was not received.';
+            _message =
+                'Login failed: authentication token was not received.';
           });
           return;
         }
@@ -316,37 +345,62 @@ class _LoginPageState extends State<LoginPage> {
         // SAVE LOGIN SESSION
         // ------------------------------------------------------
 
-        final prefs = await SharedPreferences.getInstance();
+        final prefs =
+            await SharedPreferences.getInstance();
 
         // Save authentication token.
-        await prefs.setString('auth_token', token);
+        await prefs.setString(
+          'auth_token',
+          token,
+        );
 
         // Save user role.
         if (role != null && role.isNotEmpty) {
-          await prefs.setString('user_role', role);
+          await prefs.setString(
+            'user_role',
+            role,
+          );
         }
 
         // Save username.
-        await prefs.setString('username', loggedUsername);
+        await prefs.setString(
+          'username',
+          loggedUsername,
+        );
 
         // Save user ID.
         if (userId is int) {
-          await prefs.setInt('user_id', userId);
+          await prefs.setInt(
+            'user_id',
+            userId,
+          );
         } else if (userId != null) {
-          final parsedUserId = int.tryParse(userId.toString());
+          final parsedUserId =
+              int.tryParse(userId.toString());
 
           if (parsedUserId != null) {
-            await prefs.setInt('user_id', parsedUserId);
+            await prefs.setInt(
+              'user_id',
+              parsedUserId,
+            );
           }
         }
 
-        debugPrint('Authentication token saved successfully');
+        debugPrint(
+          'Authentication token saved successfully',
+        );
 
-        debugPrint('User role saved: $role');
+        debugPrint(
+          'User role saved: $role',
+        );
 
-        debugPrint('Username saved: $loggedUsername');
+        debugPrint(
+          'Username saved: $loggedUsername',
+        );
 
-        debugPrint('User ID saved: $userId');
+        debugPrint(
+          'User ID saved: $userId',
+        );
 
         if (!mounted) {
           return;
@@ -432,7 +486,9 @@ class _LoginPageState extends State<LoginPage> {
 
       setState(() {
         _loading = false;
-        _message = data['message']?.toString() ?? 'Login failed.';
+        _message =
+            data['message']?.toString() ??
+            'Login failed.';
       });
     } catch (e) {
       if (!mounted) {
@@ -447,7 +503,9 @@ class _LoginPageState extends State<LoginPage> {
             'the phone is connected to the same Wi-Fi network.';
       });
 
-      debugPrint('LOGIN CONNECTION ERROR: $e');
+      debugPrint(
+        'LOGIN CONNECTION ERROR: $e',
+      );
     }
   }
 
@@ -471,14 +529,18 @@ class _LoginPageState extends State<LoginPage> {
   void _openStudentRegistration() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const RegisterPage()),
+      MaterialPageRoute(
+        builder: (_) => const RegisterPage(),
+      ),
     );
   }
 
   void _openTeacherRegistration() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const FacultyRegisterPage()),
+      MaterialPageRoute(
+        builder: (_) => const FacultyRegisterPage(),
+      ),
     );
   }
 
@@ -493,7 +555,10 @@ class _LoginPageState extends State<LoginPage> {
         const Text(
           'Select User Type',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 23,
+            fontWeight: FontWeight.bold,
+          ),
         ),
 
         const SizedBox(height: 25),
@@ -501,6 +566,7 @@ class _LoginPageState extends State<LoginPage> {
         // ------------------------------------------------------
         // TEACHER
         // ------------------------------------------------------
+
         SizedBox(
           height: 58,
           child: ElevatedButton.icon(
@@ -513,7 +579,10 @@ class _LoginPageState extends State<LoginPage> {
             icon: const Icon(Icons.school),
             label: const Text(
               'TEACHER',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -523,6 +592,7 @@ class _LoginPageState extends State<LoginPage> {
         // ------------------------------------------------------
         // STUDENT
         // ------------------------------------------------------
+
         SizedBox(
           height: 58,
           child: OutlinedButton.icon(
@@ -535,7 +605,10 @@ class _LoginPageState extends State<LoginPage> {
             icon: const Icon(Icons.person),
             label: const Text(
               'STUDENT',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -545,6 +618,7 @@ class _LoginPageState extends State<LoginPage> {
         // ------------------------------------------------------
         // ADMIN
         // ------------------------------------------------------
+
         SizedBox(
           height: 58,
           child: OutlinedButton.icon(
@@ -557,7 +631,10 @@ class _LoginPageState extends State<LoginPage> {
             icon: const Icon(Icons.admin_panel_settings),
             label: const Text(
               'ADMINISTRATOR',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -609,7 +686,10 @@ class _LoginPageState extends State<LoginPage> {
         Text(
           title,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
         ),
 
         const SizedBox(height: 25),
@@ -617,10 +697,12 @@ class _LoginPageState extends State<LoginPage> {
         // ------------------------------------------------------
         // USERNAME
         // ------------------------------------------------------
+
         TextField(
           controller: _usernameController,
           enabled: !_loading,
-          textCapitalization: TextCapitalization.characters,
+          textCapitalization:
+              TextCapitalization.characters,
           decoration: InputDecoration(
             labelText: usernameLabel,
             hintText: usernameHint,
@@ -634,6 +716,7 @@ class _LoginPageState extends State<LoginPage> {
         // ------------------------------------------------------
         // PASSWORD
         // ------------------------------------------------------
+
         TextField(
           controller: _passwordController,
           enabled: !_loading,
@@ -648,11 +731,14 @@ class _LoginPageState extends State<LoginPage> {
                   ? null
                   : () {
                       setState(() {
-                        _obscurePassword = !_obscurePassword;
+                        _obscurePassword =
+                            !_obscurePassword;
                       });
                     },
               icon: Icon(
-                _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                _obscurePassword
+                    ? Icons.visibility
+                    : Icons.visibility_off,
               ),
             ),
           ),
@@ -663,20 +749,29 @@ class _LoginPageState extends State<LoginPage> {
         // ------------------------------------------------------
         // MESSAGE
         // ------------------------------------------------------
+
         if (_message.isNotEmpty)
           Container(
             padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.only(bottom: 16),
+            margin: const EdgeInsets.only(
+              bottom: 16,
+            ),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              color: Colors.grey.withValues(alpha: 0.12),
+              color: Colors.grey.withValues(
+                alpha: 0.12,
+              ),
             ),
-            child: Text(_message, textAlign: TextAlign.center),
+            child: Text(
+              _message,
+              textAlign: TextAlign.center,
+            ),
           ),
 
         // ------------------------------------------------------
         // LOGIN BUTTON
         // ------------------------------------------------------
+
         SizedBox(
           height: 52,
           child: ElevatedButton(
@@ -685,11 +780,16 @@ class _LoginPageState extends State<LoginPage> {
                 ? const SizedBox(
                     width: 24,
                     height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
                   )
                 : const Text(
                     'LOGIN',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
           ),
         ),
@@ -699,16 +799,19 @@ class _LoginPageState extends State<LoginPage> {
         // ------------------------------------------------------
         // REGISTRATION
         // ------------------------------------------------------
+
         if (!isAdmin)
           OutlinedButton.icon(
             onPressed: _loading
                 ? null
                 : isFaculty
-                ? _openTeacherRegistration
-                : _openStudentRegistration,
+                    ? _openTeacherRegistration
+                    : _openStudentRegistration,
             icon: const Icon(Icons.person_add),
             label: Text(
-              isFaculty ? 'NEW TEACHER? REGISTER' : 'NEW STUDENT? REGISTER',
+              isFaculty
+                  ? 'NEW TEACHER? REGISTER'
+                  : 'NEW STUDENT? REGISTER',
             ),
           ),
 
@@ -717,9 +820,12 @@ class _LoginPageState extends State<LoginPage> {
         // ------------------------------------------------------
         // CHANGE USER TYPE
         // ------------------------------------------------------
+
         TextButton(
           onPressed: _loading ? null : _changeRole,
-          child: const Text('← CHANGE USER TYPE'),
+          child: const Text(
+            '← CHANGE USER TYPE',
+          ),
         ),
       ],
     );
@@ -732,22 +838,34 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AntiProxy Login'), centerTitle: true),
+      appBar: AppBar(
+        title: const Text(
+          'AntiProxy Login',
+        ),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment:
+                  CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.security, size: 80),
+                const Icon(
+                  Icons.security,
+                  size: 80,
+                ),
 
                 const SizedBox(height: 16),
 
                 const Text(
                   'AntiProxy',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
 
                 const SizedBox(height: 6),
@@ -759,14 +877,18 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 40),
 
-                _selectedRole == null ? _roleSelection() : _loginForm(),
+                _selectedRole == null
+                    ? _roleSelection()
+                    : _loginForm(),
 
                 const SizedBox(height: 25),
 
                 const Text(
                   'Secure role-based attendance system',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12),
+                  style: TextStyle(
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -1669,497 +1791,6 @@ class _FacultyRegisterPageState extends State<FacultyRegisterPage> {
 // FACULTY DASHBOARD
 // ============================================================
 
-class ClassroomGeofencePreview extends StatelessWidget {
-  final double length;
-  final double width;
-  final double? accuracy;
-  final bool verified;
-  final bool compact;
-
-  const ClassroomGeofencePreview({
-    super.key,
-    required this.length,
-    required this.width,
-    this.accuracy,
-    this.verified = false,
-    this.compact = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
-    final area = length > 0 && width > 0 ? length * width : 0.0;
-
-    return Container(
-      padding: EdgeInsets.all(compact ? 14 : 16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(compact ? 20 : 24),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: .65)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .035),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: primary.withValues(alpha: .10),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.crop_free_rounded, color: primary),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Classroom geofence',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Rectangular attendance boundary',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: verified
-                      ? Colors.green.withValues(alpha: .10)
-                      : primary.withValues(alpha: .09),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: verified
-                        ? Colors.green.withValues(alpha: .22)
-                        : primary.withValues(alpha: .18),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      verified
-                          ? Icons.verified_rounded
-                          : Icons.visibility_rounded,
-                      size: 14,
-                      color: verified ? Colors.green.shade700 : primary,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      verified ? 'VERIFIED' : 'PREVIEW',
-                      style: TextStyle(
-                        color: verified ? Colors.green.shade700 : primary,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: .4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: BoxDecoration(
-              color: primary.withValues(alpha: .055),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline_rounded, size: 16, color: primary),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'The faculty position is the classroom centre. Students must stay inside the rectangle.',
-                    style: TextStyle(fontSize: 11, height: 1.3),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: compact ? 224 : 270,
-            width: double.infinity,
-            child: CustomPaint(
-              painter: ClassroomGeofencePainter(
-                length: length,
-                width: width,
-                primary: primary,
-                verified: verified,
-                accuracy: accuracy,
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(
-                child: _metricCard(
-                  context,
-                  Icons.straighten_rounded,
-                  'LENGTH',
-                  '${length.toStringAsFixed(1)} m',
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _metricCard(
-                  context,
-                  Icons.width_normal_rounded,
-                  'WIDTH',
-                  '${width.toStringAsFixed(1)} m',
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _metricCard(
-                  context,
-                  Icons.square_foot_rounded,
-                  'AREA',
-                  '${area.toStringAsFixed(1)} m²',
-                ),
-              ),
-            ],
-          ),
-          if (accuracy != null) ...[
-            const SizedBox(height: 9),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(
-                color: verified
-                    ? Colors.green.withValues(alpha: .075)
-                    : primary.withValues(alpha: .06),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.gps_fixed_rounded,
-                    size: 17,
-                    color: verified ? Colors.green.shade700 : primary,
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Centre accuracy',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                  ),
-                  Text(
-                    '${accuracy!.toStringAsFixed(1)} m',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      color: verified ? Colors.green.shade700 : primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _metricCard(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value,
-  ) {
-    final primary = Theme.of(context).colorScheme.primary;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withValues(alpha: .55),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 16, color: primary),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.w800,
-              letterSpacing: .6,
-            ),
-          ),
-          const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ClassroomGeofencePainter extends CustomPainter {
-  final double length;
-  final double width;
-  final Color primary;
-  final bool verified;
-  final double? accuracy;
-
-  ClassroomGeofencePainter({
-    required this.length,
-    required this.width,
-    required this.primary,
-    required this.verified,
-    required this.accuracy,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final safeLength = length > 0 ? length : 1.0;
-    final safeWidth = width > 0 ? width : 1.0;
-    final ratio = safeLength / safeWidth;
-
-    // Deliberately reserve space around every side. This prevents N/S/E/W
-    // and measurement labels from touching the classroom rectangle.
-    const leftSpace = 74.0;
-    const rightSpace = 52.0;
-    const topSpace = 42.0;
-    const bottomSpace = 54.0;
-
-    final availableWidth = max(80.0, size.width - leftSpace - rightSpace);
-    final availableHeight = max(70.0, size.height - topSpace - bottomSpace);
-
-    double rectWidth = availableWidth;
-    double rectHeight = rectWidth / ratio;
-
-    if (rectHeight > availableHeight) {
-      rectHeight = availableHeight;
-      rectWidth = rectHeight * ratio;
-    }
-
-    rectWidth = max(80.0, rectWidth);
-    rectHeight = max(54.0, rectHeight);
-
-    final rect = Rect.fromCenter(
-      center: Offset(
-        leftSpace + (availableWidth / 2),
-        topSpace + (availableHeight / 2),
-      ),
-      width: rectWidth,
-      height: rectHeight,
-    );
-
-    final boundaryColor = verified ? Colors.green.shade600 : primary;
-
-    final fillPaint = Paint()
-      ..color = boundaryColor.withValues(alpha: .075)
-      ..style = PaintingStyle.fill;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(14)),
-      fillPaint,
-    );
-
-    final borderPaint = Paint()
-      ..color = boundaryColor
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(14)),
-      borderPaint,
-    );
-
-    final center = rect.center;
-    final centerPaint = Paint()
-      ..color = boundaryColor
-      ..style = PaintingStyle.fill;
-
-    if (accuracy != null && accuracy! > 0) {
-      final accuracyRadius = max(
-        12.0,
-        min(rect.shortestSide * .20, accuracy! * 2.0),
-      );
-      final ringPaint = Paint()
-        ..color = boundaryColor.withValues(alpha: .12)
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(center, accuracyRadius, ringPaint);
-    }
-
-    canvas.drawCircle(center, 7, centerPaint);
-
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
-    );
-
-    void drawText(
-      String text,
-      Offset centerPoint, {
-      double fontSize = 10,
-      FontWeight weight = FontWeight.w700,
-      Color? color,
-    }) {
-      textPainter.text = TextSpan(
-        text: text,
-        style: TextStyle(
-          color: color ?? primary,
-          fontSize: fontSize,
-          fontWeight: weight,
-        ),
-      );
-      textPainter.layout();
-      textPainter.paint(
-        canvas,
-        Offset(
-          centerPoint.dx - textPainter.width / 2,
-          centerPoint.dy - textPainter.height / 2,
-        ),
-      );
-    }
-
-    void drawPill(String text, Offset centerPoint) {
-      textPainter.text = TextSpan(
-        text: text,
-        style: TextStyle(
-          color: boundaryColor,
-          fontSize: 9,
-          fontWeight: FontWeight.w900,
-        ),
-      );
-      textPainter.layout();
-      final pill = RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: centerPoint,
-          width: textPainter.width + 16,
-          height: 22,
-        ),
-        const Radius.circular(11),
-      );
-      final paint = Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.fill;
-      canvas.drawRRect(pill, paint);
-      final border = Paint()
-        ..color = boundaryColor.withValues(alpha: .25)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1;
-      canvas.drawRRect(pill, border);
-      textPainter.paint(
-        canvas,
-        Offset(
-          centerPoint.dx - textPainter.width / 2,
-          centerPoint.dy - textPainter.height / 2,
-        ),
-      );
-    }
-
-    // Direction markers are deliberately outside the classroom boundary.
-    drawPill('N', Offset(center.dx, rect.top - 28));
-    drawPill('S', Offset(center.dx, rect.bottom + 28));
-    drawPill('W', Offset(rect.left - 36, center.dy));
-    drawPill('E', Offset(rect.right + 26, center.dy));
-
-    // Length measurement: below the classroom, independent from S marker.
-    final dimensionPaint = Paint()
-      ..color = boundaryColor.withValues(alpha: .55)
-      ..strokeWidth = 1.2;
-    final lengthY = min(size.height - 13, rect.bottom + 39);
-
-    canvas.drawLine(
-      Offset(rect.left, lengthY),
-      Offset(rect.right, lengthY),
-      dimensionPaint,
-    );
-    canvas.drawLine(
-      Offset(rect.left, lengthY - 4),
-      Offset(rect.left, lengthY + 4),
-      dimensionPaint,
-    );
-    canvas.drawLine(
-      Offset(rect.right, lengthY - 4),
-      Offset(rect.right, lengthY + 4),
-      dimensionPaint,
-    );
-    drawText(
-      'Length  ${safeLength.toStringAsFixed(1)} m',
-      Offset(center.dx, lengthY + 10),
-      fontSize: 9,
-      weight: FontWeight.w800,
-    );
-
-    // Width measurement: left of the classroom, independent from W marker.
-    final widthX = max(30.0, rect.left - 55);
-    canvas.drawLine(
-      Offset(widthX, rect.top),
-      Offset(widthX, rect.bottom),
-      dimensionPaint,
-    );
-    canvas.drawLine(
-      Offset(widthX - 4, rect.top),
-      Offset(widthX + 4, rect.top),
-      dimensionPaint,
-    );
-    canvas.drawLine(
-      Offset(widthX - 4, rect.bottom),
-      Offset(widthX + 4, rect.bottom),
-      dimensionPaint,
-    );
-
-    canvas.save();
-    canvas.translate(widthX - 13, center.dy);
-    canvas.rotate(-pi / 2);
-    drawText(
-      'Width  ${safeWidth.toStringAsFixed(1)} m',
-      Offset.zero,
-      fontSize: 9,
-      weight: FontWeight.w800,
-    );
-    canvas.restore();
-
-    // Centre marker label sits inside the rectangle with a dedicated pill.
-    drawPill('CLASSROOM CENTRE', Offset(center.dx, center.dy + 32));
-  }
-
-  @override
-  bool shouldRepaint(covariant ClassroomGeofencePainter oldDelegate) {
-    return oldDelegate.length != length ||
-        oldDelegate.width != width ||
-        oldDelegate.primary != primary ||
-        oldDelegate.verified != verified ||
-        oldDelegate.accuracy != accuracy;
-  }
-}
-
 class FacultyDashboard extends StatefulWidget {
   final List<CameraDescription> cameras;
   final dynamic userId;
@@ -2189,13 +1820,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
   String _semester = '';
   String _division = '';
 
-  // Kept only for backward compatibility with older session data.
-  double _radius = 0;
-
-  double _classroomLength = 0;
-  double _classroomWidth = 0;
-
-  int _selectedTab = 0;
+  double _radius = 100;
 
   Position? _teacherPosition;
 
@@ -2204,22 +1829,12 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
   Duration _remainingTime = Duration.zero;
 
   Timer? _countdownTimer;
-  Timer? _attendanceRefreshTimer;
-
-  int _livePresentCount = 0;
-  int _liveLateCount = 0;
-  int _liveRejectedCount = 0;
-  int _liveTotalStudents = 0;
-  bool _attendanceRefreshing = false;
-  DateTime? _lastAttendanceRefresh;
-  List<Map<String, dynamic>> _liveRecentActivity = [];
 
   String _statusMessage = 'No attendance session is active.';
 
   @override
   void dispose() {
     _countdownTimer?.cancel();
-    _attendanceRefreshTimer?.cancel();
     super.dispose();
   }
 
@@ -2228,20 +1843,10 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
   // ==========================================================
 
   Future<Position?> _getCurrentLocation() async {
-    const int requiredReadings = 5;
-
-    // Maximum acceptable reported GPS accuracy.
-    // Readings worse than this are ignored.
-    const double maxAccuracyMeters = 15.0;
-
-    final List<Position> readings = [];
-
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
     if (!serviceEnabled) {
-      if (mounted) {
-        _showMessage('Please enable location services.');
-      }
+      _showMessage('Please enable location services.');
       return null;
     }
 
@@ -2253,217 +1858,18 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
 
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      if (mounted) {
-        _showMessage('Location permission is required.');
-      }
+      _showMessage('Location permission is required.');
       return null;
     }
 
-    if (mounted) {
-      _showMessage(
-        'Getting accurate teacher location...\n'
-        'Please keep the phone still.',
+    try {
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
       );
-    }
-
-    // ----------------------------------------------------------
-    // COLLECT 5 GPS READINGS
-    // ----------------------------------------------------------
-
-    for (int i = 0; i < requiredReadings; i++) {
-      try {
-        if (mounted) {
-          _showMessage(
-            'Getting teacher GPS reading ${i + 1}/$requiredReadings...\n'
-            'Please keep the phone still.',
-          );
-        }
-
-        final Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.bestForNavigation,
-        );
-
-        print(
-          'FACULTY GPS READING ${i + 1}: '
-          'lat=${position.latitude}, '
-          'lon=${position.longitude}, '
-          'accuracy=${position.accuracy}, '
-          'mocked=${position.isMocked}',
-        );
-
-        // --------------------------------------------------------
-        // MOCK LOCATION CHECK
-        // --------------------------------------------------------
-
-        if (position.isMocked) {
-          print(
-            'FACULTY GPS READING ${i + 1}: '
-            'REJECTED - MOCK LOCATION',
-          );
-
-          if (mounted) {
-            _showMessage(
-              'Mock location detected.\n'
-              'Teacher location rejected.',
-            );
-          }
-
-          return null;
-        }
-
-        // --------------------------------------------------------
-        // BASIC VALIDITY CHECK
-        // --------------------------------------------------------
-
-        if (!position.latitude.isFinite ||
-            !position.longitude.isFinite ||
-            !position.accuracy.isFinite) {
-          print(
-            'FACULTY GPS READING ${i + 1}: '
-            'REJECTED - INVALID DATA',
-          );
-          continue;
-        }
-
-        // --------------------------------------------------------
-        // ACCURACY CHECK
-        // --------------------------------------------------------
-
-        if (position.accuracy <= 0 || position.accuracy > maxAccuracyMeters) {
-          print(
-            'FACULTY GPS READING ${i + 1}: '
-            'REJECTED - ACCURACY ${position.accuracy}m',
-          );
-          continue;
-        }
-
-        readings.add(position);
-
-        if (mounted) {
-          _showMessage(
-            'Teacher GPS reading ${i + 1}/$requiredReadings captured.\n'
-            'Accuracy: ${position.accuracy.toStringAsFixed(1)} m',
-          );
-        }
-
-        // Small delay allows the GPS subsystem to obtain
-        // a fresh measurement instead of repeatedly using
-        // the same cached position.
-        if (i < requiredReadings - 1) {
-          await Future.delayed(const Duration(milliseconds: 800));
-        }
-      } catch (e) {
-        print('FACULTY GPS READING ${i + 1}: ERROR $e');
-
-        continue;
-      }
-    }
-
-    // ----------------------------------------------------------
-    // REQUIRE ENOUGH VALID READINGS
-    // ----------------------------------------------------------
-
-    if (readings.length < 3) {
-      if (mounted) {
-        _showMessage(
-          'Unable to obtain enough accurate GPS readings.\n'
-          'Please move to an area with better GPS reception '
-          'and try again.',
-        );
-      }
-
+    } catch (e) {
+      _showMessage('Could not get location:\n$e');
       return null;
     }
-
-    // ----------------------------------------------------------
-    // CALCULATE WEIGHTED STABLE LOCATION
-    // ----------------------------------------------------------
-    //
-    // More accurate readings get more weight.
-    //
-    // weight = 1 / accuracy²
-    //
-    // Therefore a 5m reading contributes more than a 10m
-    // reading.
-    // ----------------------------------------------------------
-
-    double weightedLatitude = 0.0;
-    double weightedLongitude = 0.0;
-    double totalWeight = 0.0;
-
-    for (final Position position in readings) {
-      final double accuracy = position.accuracy.clamp(1.0, 100.0);
-
-      final double weight = 1.0 / (accuracy * accuracy);
-
-      weightedLatitude += position.latitude * weight;
-      weightedLongitude += position.longitude * weight;
-
-      totalWeight += weight;
-    }
-
-    if (totalWeight <= 0) {
-      if (mounted) {
-        _showMessage('Could not calculate a stable teacher location.');
-      }
-
-      return null;
-    }
-
-    final double stableLatitude = weightedLatitude / totalWeight;
-
-    final double stableLongitude = weightedLongitude / totalWeight;
-
-    // ----------------------------------------------------------
-    // CALCULATE AVERAGE GPS ACCURACY
-    // ----------------------------------------------------------
-
-    double totalAccuracy = 0.0;
-
-    for (final Position position in readings) {
-      totalAccuracy += position.accuracy;
-    }
-
-    final double averageAccuracy = totalAccuracy / readings.length;
-
-    print(
-      'FACULTY STABLE LOCATION: '
-      'lat=$stableLatitude, '
-      'lon=$stableLongitude, '
-      'validReadings=${readings.length}, '
-      'averageAccuracy=${averageAccuracy.toStringAsFixed(2)}m',
-    );
-
-    if (mounted) {
-      _showMessage(
-        'Teacher location confirmed.\n'
-        '${readings.length} accurate readings used.\n'
-        'Average accuracy: '
-        '${averageAccuracy.toStringAsFixed(1)} m',
-      );
-    }
-
-    // Return the calculated stable coordinate.
-    //
-    // We use the best available reading as the Position object
-    // template and replace its latitude/longitude with the
-    // calculated stable coordinates.
-    final Position reference = readings.reduce(
-      (a, b) => a.accuracy <= b.accuracy ? a : b,
-    );
-
-    return Position(
-      longitude: stableLongitude,
-      latitude: stableLatitude,
-      timestamp: DateTime.now(),
-      accuracy: averageAccuracy,
-      altitude: reference.altitude,
-      altitudeAccuracy: reference.altitudeAccuracy,
-      heading: reference.heading,
-      headingAccuracy: reference.headingAccuracy,
-      speed: reference.speed,
-      speedAccuracy: reference.speedAccuracy,
-    );
   }
 
   // ==========================================================
@@ -2476,295 +1882,33 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     }
 
     final subjectNameController = TextEditingController();
+
     final subjectCodeController = TextEditingController();
+
     final semesterController = TextEditingController();
+
     final divisionController = TextEditingController();
+
     final durationController = TextEditingController(text: '10');
-    final lengthController = TextEditingController();
-    final widthController = TextEditingController();
 
-    bool gettingLocation = false;
-    Position? stableLocation;
+    final radiusController = TextEditingController(text: '100');
+
+    bool gettingLocation = true;
+
+    Position? location;
+
     String error = '';
-    int currentStep = 0;
 
-    Future<Position?> captureStableTeacherLocation(
-      void Function(int completed, int total) onProgress,
-    ) async {
-      const int requiredReadings = 5;
-      const double maximumAcceptedAccuracy = 20.0;
+    // Automatically capture teacher's current GPS location
+    location = await _getCurrentLocation();
+    gettingLocation = false;
 
-      try {
-        final readings = <Position>[];
-
-        // --------------------------------------------------------
-        // COLLECT 5 READINGS IN PARALLEL
-        // --------------------------------------------------------
-        //
-        // This avoids unnecessarily waiting for five complete
-        // sequential GPS acquisition cycles.
-        //
-        final futures = List.generate(requiredReadings, (_) async {
-          try {
-            final position = await Geolocator.getCurrentPosition(
-              desiredAccuracy: LocationAccuracy.bestForNavigation,
-            );
-
-            return position;
-          } catch (e) {
-            debugPrint('TEACHER GPS READING ERROR: $e');
-            return null;
-          }
-        });
-
-        final results = await Future.wait(futures);
-
-        // --------------------------------------------------------
-        // VALIDATE READINGS
-        // --------------------------------------------------------
-
-        for (final position in results) {
-          onProgress(readings.length + 1, requiredReadings);
-
-          if (position == null) {
-            continue;
-          }
-
-          debugPrint(
-            'TEACHER GPS READING: '
-            'lat=${position.latitude}, '
-            'lon=${position.longitude}, '
-            'accuracy=${position.accuracy}, '
-            'mocked=${position.isMocked}',
-          );
-
-          // Mock/fake GPS protection.
-          if (position.isMocked) {
-            debugPrint('MOCK GPS DETECTED - TEACHER LOCATION REJECTED');
-
-            return null;
-          }
-
-          // Coordinate validation.
-          if (!position.latitude.isFinite ||
-              !position.longitude.isFinite ||
-              !position.accuracy.isFinite) {
-            continue;
-          }
-
-          if (position.latitude < -90 ||
-              position.latitude > 90 ||
-              position.longitude < -180 ||
-              position.longitude > 180) {
-            continue;
-          }
-
-          // Accuracy validation.
-          if (position.accuracy <= 0 ||
-              position.accuracy > maximumAcceptedAccuracy) {
-            continue;
-          }
-
-          readings.add(position);
-        }
-
-        // We require all five readings to be valid.
-        if (readings.length < requiredReadings) {
-          debugPrint(
-            'TEACHER GPS FAILED: '
-            '${readings.length}/$requiredReadings valid readings',
-          );
-
-          return null;
-        }
-
-        // --------------------------------------------------------
-        // CHECK FOR EXCESSIVE GPS INSTABILITY
-        // --------------------------------------------------------
-        //
-        // Calculate the approximate spread of the readings.
-        // A very large spread indicates unstable GPS.
-        //
-
-        double minLatitude = readings.first.latitude;
-        double maxLatitude = readings.first.latitude;
-        double minLongitude = readings.first.longitude;
-        double maxLongitude = readings.first.longitude;
-
-        for (final position in readings) {
-          if (position.latitude < minLatitude) {
-            minLatitude = position.latitude;
-          }
-
-          if (position.latitude > maxLatitude) {
-            maxLatitude = position.latitude;
-          }
-
-          if (position.longitude < minLongitude) {
-            minLongitude = position.longitude;
-          }
-
-          if (position.longitude > maxLongitude) {
-            maxLongitude = position.longitude;
-          }
-        }
-
-        // Approximate metres per degree.
-        const double metersPerLatitudeDegree = 111320.0;
-
-        final latitudeSpreadMeters =
-            (maxLatitude - minLatitude).abs() * metersPerLatitudeDegree;
-
-        final averageLatitude =
-            readings
-                .map((position) => position.latitude)
-                .reduce((a, b) => a + b) /
-            readings.length;
-
-        final longitudeMetersPerDegree =
-            metersPerLatitudeDegree * cos(averageLatitude * pi / 180.0);
-
-        final longitudeSpreadMeters =
-            (maxLongitude - minLongitude).abs() * longitudeMetersPerDegree;
-
-        final maximumSpread = max(latitudeSpreadMeters, longitudeSpreadMeters);
-
-        debugPrint(
-          'TEACHER GPS SPREAD: '
-          '${maximumSpread.toStringAsFixed(2)} m',
-        );
-
-        // If readings are extremely far apart, GPS is unstable.
-        if (maximumSpread > 40.0) {
-          debugPrint('TEACHER GPS FAILED: unstable location');
-
-          return null;
-        }
-
-        // --------------------------------------------------------
-        // ACCURACY-WEIGHTED CENTER
-        // --------------------------------------------------------
-        //
-        // Weight = 1 / accuracy²
-        //
-        // Example:
-        // 5m accuracy gets significantly more influence than
-        // 15m accuracy.
-        //
-
-        double weightedLatitude = 0;
-        double weightedLongitude = 0;
-        double totalWeight = 0;
-
-        for (final position in readings) {
-          final accuracy = max(position.accuracy, 1.0);
-
-          final weight = 1.0 / (accuracy * accuracy);
-
-          weightedLatitude += position.latitude * weight;
-
-          weightedLongitude += position.longitude * weight;
-
-          totalWeight += weight;
-        }
-
-        if (totalWeight <= 0) {
-          return null;
-        }
-
-        final finalLatitude = weightedLatitude / totalWeight;
-
-        final finalLongitude = weightedLongitude / totalWeight;
-
-        // Use the most accurate reading as the template for
-        // the resulting Position object.
-        final bestReading = readings.reduce(
-          (a, b) => a.accuracy <= b.accuracy ? a : b,
-        );
-
-        final stablePosition = Position(
-          latitude: finalLatitude,
-          longitude: finalLongitude,
-          timestamp: bestReading.timestamp,
-          accuracy: bestReading.accuracy,
-          altitude: bestReading.altitude,
-          altitudeAccuracy: bestReading.altitudeAccuracy,
-          heading: bestReading.heading,
-          headingAccuracy: bestReading.headingAccuracy,
-          speed: bestReading.speed,
-          speedAccuracy: bestReading.speedAccuracy,
-          floor: bestReading.floor,
-          isMocked: bestReading.isMocked,
-        );
-
-        debugPrint(
-          'STABLE TEACHER LOCATION: '
-          'lat=${stablePosition.latitude}, '
-          'lon=${stablePosition.longitude}, '
-          'accuracy=${stablePosition.accuracy}',
-        );
-
-        return stablePosition;
-      } catch (e) {
-        debugPrint('STABLE TEACHER LOCATION ERROR: $e');
-
-        return null;
-      }
+    if (location == null) {
+      _showMessage(
+        'Unable to get teacher location. Please enable GPS and try again.',
+      );
+      return;
     }
-
-    bool validateClassStep(void Function(void Function()) setDialogState) {
-      final subject = subjectNameController.text.trim();
-      final code = subjectCodeController.text.trim();
-      final semester = semesterController.text.trim();
-      final division = divisionController.text.trim();
-      final duration = int.tryParse(durationController.text.trim());
-
-      if (subject.isEmpty) {
-        setDialogState(() => error = 'Enter the subject name.');
-        return false;
-      }
-      if (code.isEmpty) {
-        setDialogState(() => error = 'Enter the subject code.');
-        return false;
-      }
-      if (semester.isEmpty || int.tryParse(semester) == null) {
-        setDialogState(() => error = 'Enter a valid semester number.');
-        return false;
-      }
-      if (division.isEmpty) {
-        setDialogState(() => error = 'Enter the division.');
-        return false;
-      }
-      if (duration == null || duration < 1 || duration > 240) {
-        setDialogState(
-          () => error = 'Duration must be between 1 and 240 minutes.',
-        );
-        return false;
-      }
-      setDialogState(() => error = '');
-      return true;
-    }
-
-    bool validateClassroomStep(void Function(void Function()) setDialogState) {
-      final length = double.tryParse(lengthController.text.trim());
-      final width = double.tryParse(widthController.text.trim());
-
-      if (length == null || length <= 0 || length > 500) {
-        setDialogState(
-          () => error = 'Classroom length must be between 0 and 500 metres.',
-        );
-        return false;
-      }
-      if (width == null || width <= 0 || width > 500) {
-        setDialogState(
-          () => error = 'Classroom width must be between 0 and 500 metres.',
-        );
-        return false;
-      }
-      setDialogState(() => error = '');
-      return true;
-    }
-
     try {
       await showDialog(
         context: context,
@@ -2778,643 +1922,272 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                 setDialogState(() {
                   gettingLocation = true;
                   error = '';
-                  stableLocation = null;
                 });
 
-                final capturedLocation = await captureStableTeacherLocation((
-                  completed,
-                  total,
-                ) {
-                  if (!dialogBuildContext.mounted) return;
-                  setDialogState(() {
-                    error =
-                        'Verifying classroom centre...\nGPS reading $completed of $total';
-                  });
-                });
+                final capturedLocation = await _getCurrentLocation();
 
-                if (!dialogBuildContext.mounted) return;
-
-                if (capturedLocation == null) {
-                  setDialogState(() {
-                    gettingLocation = false;
-                    stableLocation = null;
-                    error =
-                        'Location verification failed.\nMove to the classroom centre, enable GPS, and ensure mock location is disabled.';
-                  });
+                if (!dialogBuildContext.mounted) {
                   return;
                 }
 
-                stableLocation = capturedLocation;
+                location = capturedLocation;
+
                 setDialogState(() {
                   gettingLocation = false;
-                  error = '';
                 });
               }
 
-              final double? classroomLength = double.tryParse(
-                lengthController.text.trim(),
-              );
-              final double? classroomWidth = double.tryParse(
-                widthController.text.trim(),
-              );
-              final double area =
-                  (classroomLength ?? 0) * (classroomWidth ?? 0);
-
-              Widget stepIndicator() {
-                const labels = ['Class', 'Classroom', 'Security'];
-                return Row(
-                  children: List.generate(labels.length, (index) {
-                    final active = index == currentStep;
-                    final completed =
-                        index < currentStep ||
-                        (index == 2 && stableLocation != null);
-                    return Expanded(
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              if (index > 0)
-                                Expanded(
-                                  child: Container(
-                                    height: 2,
-                                    color: index <= currentStep
-                                        ? Theme.of(
-                                            dialogBuildContext,
-                                          ).colorScheme.primary
-                                        : Theme.of(
-                                            dialogBuildContext,
-                                          ).dividerColor,
-                                  ),
-                                ),
-                              Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: active || completed
-                                      ? Theme.of(
-                                          dialogBuildContext,
-                                        ).colorScheme.primary
-                                      : Theme.of(
-                                          dialogBuildContext,
-                                        ).colorScheme.surfaceContainerHighest,
-                                ),
-                                child: Icon(
-                                  completed && !active
-                                      ? Icons.check
-                                      : Icons.circle,
-                                  size: completed && !active ? 18 : 10,
-                                  color: active || completed
-                                      ? Theme.of(
-                                          dialogBuildContext,
-                                        ).colorScheme.onPrimary
-                                      : Theme.of(
-                                          dialogBuildContext,
-                                        ).colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              if (index < labels.length - 1)
-                                Expanded(
-                                  child: Container(
-                                    height: 2,
-                                    color: index < currentStep
-                                        ? Theme.of(
-                                            dialogBuildContext,
-                                          ).colorScheme.primary
-                                        : Theme.of(
-                                            dialogBuildContext,
-                                          ).dividerColor,
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            labels[index],
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: active
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              color: active
-                                  ? Theme.of(
-                                      dialogBuildContext,
-                                    ).colorScheme.primary
-                                  : Theme.of(
-                                      dialogBuildContext,
-                                    ).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                );
-              }
-
-              Widget sectionHeader(
-                IconData icon,
-                String title,
-                String subtitle,
-              ) {
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    color: Theme.of(
-                      dialogBuildContext,
-                    ).colorScheme.surfaceContainerHighest,
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        icon,
-                        color: Theme.of(dialogBuildContext).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              subtitle,
-                              style: TextStyle(
-                                color: Theme.of(
-                                  dialogBuildContext,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              Widget classStep() {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    sectionHeader(
-                      Icons.menu_book_rounded,
-                      'Class details',
-                      'Tell AntiProxy which class is being recorded.',
-                    ),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: subjectNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Subject name',
-                        hintText: 'Data Structures',
-                        prefixIcon: Icon(Icons.book_outlined),
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: subjectCodeController,
-                      textCapitalization: TextCapitalization.characters,
-                      decoration: const InputDecoration(
-                        labelText: 'Subject code',
-                        hintText: '22UCS113C',
-                        prefixIcon: Icon(Icons.code_rounded),
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: semesterController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'Semester',
-                              hintText: '7',
-                              prefixIcon: Icon(Icons.school_outlined),
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: divisionController,
-                            textCapitalization: TextCapitalization.characters,
-                            decoration: const InputDecoration(
-                              labelText: 'Division',
-                              hintText: 'B',
-                              prefixIcon: Icon(Icons.groups_outlined),
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: durationController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Session duration (minutes)',
-                        hintText: '10',
-                        prefixIcon: Icon(Icons.timer_outlined),
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ],
-                );
-              }
-
-              Widget classroomStep() {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    sectionHeader(
-                      Icons.crop_square_rounded,
-                      'Classroom setup',
-                      'The faculty GPS position becomes the centre of this rectangular classroom.',
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: lengthController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Length (m)',
-                              hintText: '8',
-                              prefixIcon: Icon(Icons.straighten_rounded),
-                              border: OutlineInputBorder(),
-                            ),
-                            onChanged: (_) => setDialogState(() {}),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: widthController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Width (m)',
-                              hintText: '6',
-                              prefixIcon: Icon(Icons.width_normal_rounded),
-                              border: OutlineInputBorder(),
-                            ),
-                            onChanged: (_) => setDialogState(() {}),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    ClassroomGeofencePreview(
-                      length: classroomLength ?? 0,
-                      width: classroomWidth ?? 0,
-                      verified: false,
-                    ),
-                  ],
-                );
-              }
-
-              Widget securityStep() {
-                final verified = stableLocation != null;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    sectionHeader(
-                      Icons.verified_user_rounded,
-                      'Security verification',
-                      'AntiProxy verifies the classroom centre before generating the attendance QR.',
-                    ),
-                    const SizedBox(height: 14),
-                    ...[
-                      (
-                        '5-point GPS verification',
-                        'Five accurate readings establish a stable centre.',
-                        Icons.location_searching_rounded,
-                      ),
-                      (
-                        'Mock-location protection',
-                        'Simulated/fake GPS readings are rejected.',
-                        Icons.gps_off_rounded,
-                      ),
-                      (
-                        'Rectangular geofence',
-                        'Students must be inside the configured classroom boundary.',
-                        Icons.crop_square_rounded,
-                      ),
-                      (
-                        'Dynamic QR session',
-                        'The QR is generated only after verification succeeds.',
-                        Icons.qr_code_2_rounded,
-                      ),
-                    ].map((item) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 9),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            color: Theme.of(
-                              dialogBuildContext,
-                            ).colorScheme.surfaceContainerHighest,
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                item.$3,
-                                color: Theme.of(
-                                  dialogBuildContext,
-                                ).colorScheme.primary,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      item.$1,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    Text(
-                                      item.$2,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Theme.of(
-                                          dialogBuildContext,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const Icon(Icons.check_circle_rounded, size: 20),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(18),
-                        color: verified
-                            ? Theme.of(
-                                dialogBuildContext,
-                              ).colorScheme.primaryContainer
-                            : Theme.of(
-                                dialogBuildContext,
-                              ).colorScheme.surfaceContainerHighest,
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            verified
-                                ? Icons.location_on_rounded
-                                : Icons.my_location_rounded,
-                            size: 34,
-                            color: Theme.of(
-                              dialogBuildContext,
-                            ).colorScheme.primary,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            verified
-                                ? 'Classroom centre verified'
-                                : 'Ready to verify classroom centre',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          if (verified)
-                            Text(
-                              'Accuracy ${stableLocation!.accuracy.toStringAsFixed(1)} m\n'
-                              '${stableLocation!.latitude.toStringAsFixed(6)}, ${stableLocation!.longitude.toStringAsFixed(6)}',
-                              textAlign: TextAlign.center,
-                            )
-                          else
-                            const Text(
-                              'Stand at the centre of the classroom and verify your location before starting.',
-                              textAlign: TextAlign.center,
-                            ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: gettingLocation
-                                  ? null
-                                  : captureLocation,
-                              icon: gettingLocation
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : Icon(
-                                      verified
-                                          ? Icons.refresh_rounded
-                                          : Icons.my_location_rounded,
-                                    ),
-                              label: Text(
-                                gettingLocation
-                                    ? 'VERIFYING LOCATION...'
-                                    : verified
-                                    ? 'VERIFY AGAIN'
-                                    : 'VERIFY CLASSROOM CENTRE',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (gettingLocation) ...[
-                      const SizedBox(height: 12),
-                      const LinearProgressIndicator(),
-                    ],
-                  ],
-                );
-              }
-
-              final titles = [
-                'Class details',
-                'Classroom setup',
-                'Security verification',
-              ];
-
               return AlertDialog(
-                titlePadding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
-                contentPadding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
-                actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                title: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Start Attendance',
-                            style: Theme.of(dialogBuildContext)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
+                title: const Text('Create Attendance Session'),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: subjectNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Subject Name',
+                          hintText: 'Data Structures',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.book),
                         ),
-                        IconButton(
-                          tooltip: 'Close',
-                          onPressed: gettingLocation
-                              ? null
-                              : () => Navigator.pop(dialogContext),
-                          icon: const Icon(Icons.close_rounded),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      'Step ${currentStep + 1} of 3 • ${titles[currentStep]}',
-                      style: TextStyle(
-                        color: Theme.of(
-                          dialogBuildContext,
-                        ).colorScheme.onSurfaceVariant,
-                        fontSize: 13,
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    stepIndicator(),
-                  ],
-                ),
-                content: SizedBox(
-                  width: 520,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 12),
-                        if (currentStep == 0) classStep(),
-                        if (currentStep == 1) classroomStep(),
-                        if (currentStep == 2) securityStep(),
-                        if (error.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              color: gettingLocation
-                                  ? Theme.of(
-                                      dialogBuildContext,
-                                    ).colorScheme.primaryContainer
-                                  : Theme.of(
-                                      dialogBuildContext,
-                                    ).colorScheme.errorContainer,
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  gettingLocation
-                                      ? Icons.sync_rounded
-                                      : Icons.info_outline_rounded,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(child: Text(error)),
-                              ],
-                            ),
+
+                      const SizedBox(height: 12),
+
+                      TextField(
+                        controller: subjectCodeController,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: const InputDecoration(
+                          labelText: 'Subject Code',
+                          hintText: '21CS42',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.code),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      TextField(
+                        controller: semesterController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Semester',
+                          hintText: '5',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.school),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      TextField(
+                        controller: divisionController,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: const InputDecoration(
+                          labelText: 'Division',
+                          hintText: 'A',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.groups),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      TextField(
+                        controller: durationController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Attendance Duration (minutes)',
+                          hintText: '10',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.timer),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      TextField(
+                        controller: radiusController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Geofence Radius (metres)',
+                          hintText: '100',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.radar),
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: gettingLocation ? null : captureLocation,
+                          icon: gettingLocation
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.my_location),
+                          label: Text(
+                            gettingLocation
+                                ? 'GETTING LOCATION...'
+                                : location == null
+                                ? 'CAPTURE TEACHER LOCATION'
+                                : 'LOCATION CAPTURED ✓',
                           ),
-                        ],
-                      ],
-                    ),
+                        ),
+                      ),
+
+                      if (location != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            'Lat: ${location!.latitude.toStringAsFixed(6)}\n'
+                            'Lng: ${location!.longitude.toStringAsFixed(6)}\n'
+                            'Accuracy: ${location!.accuracy.toStringAsFixed(1)} m',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+
+                      if (error.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Text(
+                            error,
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 actions: [
-                  if (currentStep > 0)
-                    TextButton(
-                      onPressed: gettingLocation
-                          ? null
-                          : () => setDialogState(() {
-                              currentStep--;
-                              error = '';
-                            }),
-                      child: const Text('BACK'),
-                    )
-                  else
-                    TextButton(
-                      onPressed: gettingLocation
-                          ? null
-                          : () => Navigator.pop(dialogContext),
-                      child: const Text('CANCEL'),
-                    ),
-                  const SizedBox(width: 4),
-                  FilledButton.icon(
+                  TextButton(
+                    onPressed: gettingLocation
+                        ? null
+                        : () {
+                            Navigator.pop(dialogContext);
+                          },
+                    child: const Text('CANCEL'),
+                  ),
+
+                  ElevatedButton.icon(
                     onPressed: gettingLocation
                         ? null
                         : () async {
-                            if (currentStep == 0) {
-                              if (validateClassStep(setDialogState)) {
-                                setDialogState(() {
-                                  currentStep = 1;
-                                  error = '';
-                                });
-                              }
-                              return;
-                            }
+                            final subject = subjectNameController.text.trim();
 
-                            if (currentStep == 1) {
-                              if (validateClassroomStep(setDialogState)) {
-                                setDialogState(() {
-                                  currentStep = 2;
-                                  error = '';
-                                });
-                              }
-                              return;
-                            }
+                            final code = subjectCodeController.text
+                                .trim()
+                                .toUpperCase();
 
-                            if (stableLocation == null) {
+                            final semester = semesterController.text.trim();
+
+                            final division = divisionController.text
+                                .trim()
+                                .toUpperCase();
+
+                            final duration = int.tryParse(
+                              durationController.text.trim(),
+                            );
+
+                            final radius = double.tryParse(
+                              radiusController.text.trim(),
+                            );
+
+                            if (subject.isEmpty) {
                               setDialogState(() {
-                                error =
-                                    'Verify the classroom centre before starting attendance.';
+                                error = 'Enter subject name.';
                               });
                               return;
                             }
 
-                            final subject = subjectNameController.text.trim();
-                            final code = subjectCodeController.text
-                                .trim()
-                                .toUpperCase();
-                            final semester = semesterController.text.trim();
-                            final division = divisionController.text
-                                .trim()
-                                .toUpperCase();
-                            final duration = int.parse(
-                              durationController.text.trim(),
-                            );
-                            final finalLength = double.parse(
-                              lengthController.text.trim(),
-                            );
-                            final finalWidth = double.parse(
-                              widthController.text.trim(),
-                            );
-                            final capturedLocation = stableLocation!;
+                            if (code.isEmpty) {
+                              setDialogState(() {
+                                error = 'Enter subject code.';
+                              });
+                              return;
+                            }
+
+                            if (semester.isEmpty) {
+                              setDialogState(() {
+                                error = 'Enter semester.';
+                              });
+                              return;
+                            }
+
+                            if (int.tryParse(semester) == null) {
+                              setDialogState(() {
+                                error = 'Semester must be a number.';
+                              });
+                              return;
+                            }
+
+                            if (division.isEmpty) {
+                              setDialogState(() {
+                                error = 'Enter division.';
+                              });
+                              return;
+                            }
+
+                            if (duration == null || duration <= 0) {
+                              setDialogState(() {
+                                error = 'Enter a valid duration.';
+                              });
+                              return;
+                            }
+
+                            if (radius == null || radius <= 0) {
+                              setDialogState(() {
+                                error = 'Enter a valid radius.';
+                              });
+                              return;
+                            }
+
+                            if (location == null) {
+                              setDialogState(() {
+                                error = 'Capture teacher location first.';
+                              });
+                              return;
+                            }
+
+                            // Get the teacher's FRESH GPS location immediately
+                            // before creating the attendance session.
+                            setDialogState(() {
+                              gettingLocation = true;
+                              error = '';
+                            });
+
+                            final freshLocation = await _getCurrentLocation();
+
+                            if (!dialogBuildContext.mounted) {
+                              return;
+                            }
+
+                            if (freshLocation == null) {
+                              setDialogState(() {
+                                gettingLocation = false;
+                                error =
+                                    'Could not get teacher GPS location. Please enable GPS and try again.';
+                              });
+                              return;
+                            }
+
+                            location = freshLocation;
+
+                            setDialogState(() {
+                              gettingLocation = false;
+                            });
+
+                            final selectedLocation = freshLocation;
 
                             Navigator.pop(dialogContext);
 
@@ -3424,19 +2197,12 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                               semester: semester,
                               division: division,
                               durationMinutes: duration,
-                              classroomLength: finalLength,
-                              classroomWidth: finalWidth,
-                              location: capturedLocation,
+                              radius: radius,
+                              location: selectedLocation,
                             );
                           },
-                    icon: Icon(
-                      currentStep == 2
-                          ? Icons.play_arrow_rounded
-                          : Icons.arrow_forward_rounded,
-                    ),
-                    label: Text(
-                      currentStep == 2 ? 'START ATTENDANCE' : 'CONTINUE',
-                    ),
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text('START'),
                   ),
                 ],
               );
@@ -3451,8 +2217,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         semesterController.dispose();
         divisionController.dispose();
         durationController.dispose();
-        lengthController.dispose();
-        widthController.dispose();
+        radiusController.dispose();
       });
     }
   }
@@ -3467,8 +2232,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     required String semester,
     required String division,
     required int durationMinutes,
-    required double classroomLength,
-    required double classroomWidth,
+    required double radius,
     required Position location,
   }) async {
     if (!mounted) return;
@@ -3479,6 +2243,11 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     });
 
     try {
+      // ------------------------------------------------------
+      // IMPORTANT:
+      // These field names EXACTLY match backend/routes/session.py
+      // ------------------------------------------------------
+
       final now = DateTime.now();
 
       final endTime = now.add(Duration(minutes: durationMinutes));
@@ -3489,16 +2258,18 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         body: jsonEncode({
           'faculty_user_id': widget.userId,
 
-          // Backend requires both fields.
-          // Subject name is used as class name.
+          // Backend requires BOTH fields.
+          // We use subject name as class name.
           'class_name': subjectName,
 
           'subject_name': subjectName,
 
           'subject_code': subjectCode,
 
+          // NEW: send semester to backend
           'semester': semester,
 
+          // NEW: send division to backend
           'division': division,
 
           'attendance_date': _formatDate(now),
@@ -3507,19 +2278,11 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
 
           'end_time': _formatTime(endTime),
 
-          // Stable teacher coordinate becomes
-          // the classroom center.
           'allowed_latitude': location.latitude,
 
           'allowed_longitude': location.longitude,
 
-          // NEW RECTANGULAR CLASSROOM GEO-FENCE
-          'classroom_length': classroomLength,
-          'classroom_width': classroomWidth,
-
-          // Kept only for compatibility with older
-          // backend/database records.
-          'allowed_radius': 0,
+          'allowed_radius': radius,
         }),
       );
 
@@ -3584,28 +2347,18 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
 
         setState(() {
           _loading = false;
-
           _sessionActive = true;
 
           _sessionId = sessionId;
-
           _qrData = qrValue;
 
           _subjectName = subjectName;
-
           _subjectCode = subjectCode;
-
           _semester = semester;
-
           _division = division;
 
-          // Radius is retained only for backward compatibility.
-          _radius = 0;
+          _radius = radius;
 
-          _classroomLength = classroomLength;
-          _classroomWidth = classroomWidth;
-
-          // Stable teacher position = classroom center.
           _teacherPosition = location;
 
           _sessionEndTime = endTime;
@@ -3613,18 +2366,9 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
           _remainingTime = Duration(minutes: durationMinutes);
 
           _statusMessage = 'Attendance session is active.';
-
-          // Reset live monitoring for the newly created session.
-          _livePresentCount = 0;
-          _liveLateCount = 0;
-          _liveRejectedCount = 0;
-          _liveTotalStudents = 0;
-          _liveRecentActivity = [];
-          _lastAttendanceRefresh = null;
         });
 
         _startCountdown();
-        _startLiveAttendanceRefresh();
 
         return;
       }
@@ -3716,8 +2460,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     }
 
     _countdownTimer?.cancel();
-    _attendanceRefreshTimer?.cancel();
-    _attendanceRefreshTimer = null;
 
     if (_sessionId == null) {
       if (!mounted) return;
@@ -3787,8 +2529,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         data: _qrData!,
         version: QrVersions.auto,
         gapless: true,
-        color: Colors.black,
-        emptyColor: Colors.white,
       );
 
       final ByteData? byteData = await painter.toImageData(
@@ -3820,7 +2560,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
               'Code: $_subjectCode\n'
               'Semester: $_semester\n'
               'Division: $_division\n'
-              'Classroom: ${_classroomLength.toStringAsFixed(1)} m × ${_classroomWidth.toStringAsFixed(1)} m\n\n'
+              'Radius: ${_radius.toStringAsFixed(0)} metres\n\n'
               'Scan this QR to mark attendance.',
           files: [XFile(file.path, mimeType: 'image/png')],
         ),
@@ -3830,167 +2570,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
 
       debugPrint('QR SHARE ERROR: $e');
     }
-  }
-
-  // ==========================================================
-  // LIVE ATTENDANCE MONITORING
-  // ==========================================================
-
-  void _startLiveAttendanceRefresh() {
-    _attendanceRefreshTimer?.cancel();
-
-    // Fetch immediately, then refresh every 5 seconds while the
-    // session is active. The existing faculty report endpoint is
-    // used so no new backend API is required for this UI phase.
-    _refreshLiveAttendance();
-    _attendanceRefreshTimer = Timer.periodic(
-      const Duration(seconds: 5),
-      (_) => _refreshLiveAttendance(),
-    );
-  }
-
-  Future<void> _refreshLiveAttendance({bool manual = false}) async {
-    if (!_sessionActive || _sessionId == null || _attendanceRefreshing) {
-      return;
-    }
-
-    if (manual) {
-      setState(() => _attendanceRefreshing = true);
-    } else {
-      _attendanceRefreshing = true;
-    }
-
-    try {
-      final response = await http.get(
-        Uri.parse('$backendUrl/faculty/attendance-report/${widget.userId}'),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Server returned ${response.statusCode}');
-      }
-
-      final decoded = jsonDecode(response.body);
-      final session = _findLiveSession(decoded, _sessionId!);
-
-      if (session == null) {
-        _attendanceRefreshing = false;
-        if (manual && mounted) setState(() {});
-        return;
-      }
-
-      final summaryValue = session['summary'];
-      final summary = summaryValue is Map
-          ? Map<String, dynamic>.from(summaryValue)
-          : <String, dynamic>{};
-
-      final studentsValue = session['students'];
-      final students = studentsValue is List
-          ? List<dynamic>.from(studentsValue)
-          : <dynamic>[];
-
-      int total = _liveTotalStudents;
-      int present = _toIntValue(
-        summary['present'] ?? session['present'] ?? session['present_count'],
-      );
-      int late = _toIntValue(
-        summary['late'] ?? session['late'] ?? session['late_count'],
-      );
-      int rejected = _toIntValue(
-        summary['rejected'] ?? session['rejected'] ?? session['rejected_count'],
-      );
-
-      if (students.isNotEmpty) {
-        total = students.length;
-        present = 0;
-        late = 0;
-
-        for (final item in students) {
-          if (item is! Map) continue;
-          final status = _toStringValue(item['status']).toLowerCase().trim();
-          if (status == 'present') {
-            present++;
-          } else if (status == 'late') {
-            late++;
-          }
-        }
-      }
-
-      if (total < present + late + rejected) {
-        total = present + late + rejected;
-      }
-
-      final recent = <Map<String, dynamic>>[];
-      for (final item in students) {
-        if (item is! Map) continue;
-        final map = Map<String, dynamic>.from(item);
-        final status = _toStringValue(map['status']).toLowerCase().trim();
-        if (status == 'present' || status == 'late' || status == 'rejected') {
-          recent.add(map);
-        }
-      }
-
-      recent.sort((a, b) {
-        final aTime = _toStringValue(
-          a['marked_at'] ?? a['created_at'] ?? a['attendance_time'],
-        );
-        final bTime = _toStringValue(
-          b['marked_at'] ?? b['created_at'] ?? b['attendance_time'],
-        );
-        return bTime.compareTo(aTime);
-      });
-
-      if (!mounted) return;
-
-      setState(() {
-        _liveTotalStudents = total;
-        _livePresentCount = present;
-        _liveLateCount = late;
-        _liveRejectedCount = rejected;
-        _liveRecentActivity = recent.take(5).toList();
-        _lastAttendanceRefresh = DateTime.now();
-        _attendanceRefreshing = false;
-      });
-    } catch (e) {
-      _attendanceRefreshing = false;
-      debugPrint('LIVE ATTENDANCE REFRESH ERROR: $e');
-      if (manual && mounted) setState(() {});
-    }
-  }
-
-  Map<String, dynamic>? _findLiveSession(dynamic value, int sessionId) {
-    if (value is Map) {
-      final map = Map<String, dynamic>.from(value);
-      final candidates = [
-        map['id'],
-        map['session_id'],
-        map['attendance_session_id'],
-      ];
-      if (candidates.any((v) => v?.toString() == sessionId.toString())) {
-        return map;
-      }
-
-      for (final entry in map.values) {
-        final found = _findLiveSession(entry, sessionId);
-        if (found != null) return found;
-      }
-    } else if (value is List) {
-      for (final item in value) {
-        final found = _findLiveSession(item, sessionId);
-        if (found != null) return found;
-      }
-    }
-    return null;
-  }
-
-  int _toIntValue(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    return int.tryParse(value?.toString() ?? '') ?? 0;
-  }
-
-  String _toStringValue(dynamic value) {
-    if (value == null || value.toString() == 'null') return '';
-    return value.toString();
   }
 
   // ==========================================================
@@ -4052,527 +2631,152 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
   // ==========================================================
 
   Widget _activeSessionCard() {
-    final theme = Theme.of(context);
-    final remainingSeconds = _remainingTime.inSeconds;
-    final totalSeconds = _sessionEndTime == null
-        ? 1
-        : _sessionEndTime!.difference(DateTime.now()).inSeconds.clamp(1, 86400);
-    final progress = (remainingSeconds / totalSeconds).clamp(0.0, 1.0);
-    final markedCount = _livePresentCount + _liveLateCount;
-    final notMarked = (_liveTotalStudents - markedCount - _liveRejectedCount)
-        .clamp(0, 999999);
-    final attendanceRate = _liveTotalStudents > 0
-        ? (markedCount / _liveTotalStudents) * 100
-        : 0.0;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(
-                      Icons.wifi_tethering,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Live attendance',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        SizedBox(height: 3),
-                        Text('Students can scan the active QR now'),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: const Text(
-                      'LIVE',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: LinearProgressIndicator(value: progress, minHeight: 7),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Time remaining', style: TextStyle(fontSize: 12)),
-                  Text(
-                    _formatDuration(_remainingTime),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        Card(
-          elevation: 0,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
+    return Card(
+      elevation: 3,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          children: [
+            Row(
               children: [
-                if (_qrData != null)
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: theme.dividerColor),
-                    ),
-                    child: QrImageView(
-                      data: _qrData!,
-                      version: QrVersions.auto,
-                      size: 230,
-                      backgroundColor: Colors.white,
-                      eyeStyle: const QrEyeStyle(
-                        eyeShape: QrEyeShape.square,
-                        color: Colors.black,
-                      ),
-                      dataModuleStyle: const QrDataModuleStyle(
-                        dataModuleShape: QrDataModuleShape.square,
-                        color: Colors.black,
-                      ),
-                      errorCorrectionLevel: QrErrorCorrectLevel.H,
-                    ),
-                  ),
-                const SizedBox(height: 14),
-                Text(
-                  _subjectName,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$_subjectCode • Semester $_semester • Division $_division',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 18),
+                const Icon(Icons.qr_code_2, size: 30),
 
-                // ------------------------------------------------
-                // LIVE ATTENDANCE COUNTERS
-                // ------------------------------------------------
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Attendance monitor',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Refresh attendance',
-                        onPressed: _attendanceRefreshing
-                            ? null
-                            : () => _refreshLiveAttendance(manual: true),
-                        icon: _attendanceRefreshing
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.refresh),
-                      ),
-                    ],
+                const SizedBox(width: 10),
+
+                const Expanded(
+                  child: Text(
+                    'LIVE ATTENDANCE SESSION',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _liveCountCard(
-                        icon: Icons.check_circle_rounded,
-                        label: 'Present',
-                        value: _livePresentCount,
-                        iconColor: Colors.green,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _liveCountCard(
-                        icon: Icons.hourglass_top_rounded,
-                        label: 'Not marked',
-                        value: notMarked,
-                        iconColor: Colors.orange,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _liveCountCard(
-                        icon: Icons.block_rounded,
-                        label: 'Rejected',
-                        value: _liveRejectedCount,
-                        iconColor: Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
+
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.green,
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.groups_rounded),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Attendance rate',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            Text(
-                              '${attendanceRate.toStringAsFixed(0)}%',
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        '$_livePresentCount${_liveLateCount > 0 ? ' + $_liveLateCount late' : ''} / $_liveTotalStudents',
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ],
+                  child: const Text(
+                    'ACTIVE',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 18),
+              ],
+            ),
 
-                // ------------------------------------------------
-                // RECENT ACTIVITY
-                // ------------------------------------------------
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Recent activity',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
+            const SizedBox(height: 18),
+
+            if (_qrData != null)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white,
+                  border: Border.all(color: Colors.grey),
                 ),
-                const SizedBox(height: 8),
-                if (_liveRecentActivity.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.hourglass_empty_rounded),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Waiting for students to mark attendance...',
-                          ),
+                child: QrImageView(
+                  data: _qrData!,
+                  version: QrVersions.auto,
+                  size: 240,
+                  backgroundColor: Colors.white,
+                ),
+              ),
+
+            const SizedBox(height: 16),
+
+            Text(
+              _formatDuration(_remainingTime),
+              style: const TextStyle(fontSize: 38, fontWeight: FontWeight.bold),
+            ),
+
+            const Text(
+              'TIME REMAINING',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 18),
+
+            _infoRow(Icons.book, 'Subject', _subjectName),
+
+            _infoRow(Icons.code, 'Subject Code', _subjectCode),
+
+            _infoRow(Icons.school, 'Semester', _semester),
+
+            _infoRow(Icons.groups, 'Division', _division),
+
+            _infoRow(
+              Icons.radar,
+              'Radius',
+              '${_radius.toStringAsFixed(0)} metres',
+            ),
+
+            if (_teacherPosition != null)
+              _infoRow(
+                Icons.location_on,
+                'Teacher GPS',
+                '${_teacherPosition!.latitude.toStringAsFixed(5)}, '
+                    '${_teacherPosition!.longitude.toStringAsFixed(5)}',
+              ),
+
+            const SizedBox(height: 18),
+
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: _shareQr,
+                icon: const Icon(Icons.share),
+                label: const Text('SHARE QR / WHATSAPP'),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('Close Session?'),
+                      content: const Text(
+                        'Students will no longer be able '
+                        'to mark attendance using this session.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('CANCEL'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          child: const Text('CLOSE'),
                         ),
                       ],
                     ),
-                  )
-                else
-                  ..._liveRecentActivity.map(_liveActivityTile),
+                  );
 
-                const SizedBox(height: 18),
-                ClassroomGeofencePreview(
-                  length: _classroomLength,
-                  width: _classroomWidth,
-                  accuracy: _teacherPosition?.accuracy,
-                  verified: true,
-                  compact: true,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _sessionStat(
-                        Icons.straighten,
-                        'Classroom',
-                        '${_classroomLength.toStringAsFixed(1)} × ${_classroomWidth.toStringAsFixed(1)} m',
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _sessionStat(
-                        Icons.location_on_outlined,
-                        'Center',
-                        _teacherPosition == null
-                            ? 'Verified'
-                            : '${_teacherPosition!.latitude.toStringAsFixed(4)}, ${_teacherPosition!.longitude.toStringAsFixed(4)}',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _lastAttendanceRefresh == null
-                        ? 'Live monitor starting...'
-                        : 'Updated ${_formatTime(_lastAttendanceRefresh!)}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: FilledButton.icon(
-                    onPressed: _shareQr,
-                    icon: const Icon(Icons.share),
-                    label: const Text('SHARE QR'),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (dialogContext) => AlertDialog(
-                          title: const Text('Close attendance session?'),
-                          content: const Text(
-                            'Students will no longer be able to mark attendance using this QR.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(dialogContext, false),
-                              child: const Text('CANCEL'),
-                            ),
-                            FilledButton(
-                              onPressed: () =>
-                                  Navigator.pop(dialogContext, true),
-                              child: const Text('CLOSE SESSION'),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (mounted && confirmed == true) await _closeSession();
-                    },
-                    icon: const Icon(Icons.stop_circle_outlined),
-                    label: const Text('CLOSE SESSION'),
-                  ),
-                ),
-              ],
+                  if (!mounted) return;
+
+                  if (confirmed == true) {
+                    await _closeSession();
+                  }
+                },
+                icon: const Icon(Icons.stop_circle),
+                label: const Text('CLOSE SESSION'),
+              ),
             ),
-          ),
+          ],
         ),
-      ],
-    );
-  }
-
-  Widget _liveCountCard({
-    required IconData icon,
-    required String label,
-    required int value,
-    required Color iconColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: iconColor, size: 22),
-          const SizedBox(height: 5),
-          Text(
-            '$value',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-          ),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 10),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _liveActivityTile(Map<String, dynamic> student) {
-    final status = _toStringValue(student['status']).toLowerCase().trim();
-    final name = _toStringValue(
-      student['full_name'] ??
-          student['name'] ??
-          student['student_name'] ??
-          student['student_id'],
-    );
-    final usn = _toStringValue(
-      student['student_id'] ?? student['usn'] ?? student['username'],
-    );
-    final time = _toStringValue(
-      student['marked_at'] ??
-          student['created_at'] ??
-          student['attendance_time'],
-    );
-
-    final isLate = status == 'late';
-    final isRejected = status == 'rejected';
-    final iconColor = isRejected
-        ? Colors.red
-        : (isLate ? Colors.orange : Colors.green);
-    final icon = isRejected
-        ? Icons.block_rounded
-        : (isLate ? Icons.schedule_rounded : Icons.check_circle_rounded);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 7),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: iconColor, size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name.isEmpty ? 'Student' : name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                Text(
-                  isRejected
-                      ? 'Attendance rejected'
-                      : (isLate
-                            ? 'Attendance marked late'
-                            : 'Attendance verified'),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (usn.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 6),
-              child: Text(
-                usn,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          if (time.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Text(
-                time.length > 16 ? time.substring(time.length - 8) : time,
-                style: const TextStyle(fontSize: 10),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sessionStat(IconData icon, String label, String value) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: const TextStyle(fontSize: 11)),
-                Text(
-                  value,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -4583,441 +2787,148 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    final pages = <Widget>[
-      _buildFacultyHome(theme),
-      _buildFacultyProfile(theme),
-    ];
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Faculty Command Center'),
-        centerTitle: false,
+        title: const Text('Faculty Dashboard'),
+        centerTitle: true,
         actions: [
           IconButton(
-            tooltip: 'Notifications',
-            onPressed: _openFacultyNotifications,
-            icon: const Icon(Icons.notifications_none_rounded),
-          ),
-          IconButton(
-            tooltip: 'Profile',
-            onPressed: () => setState(() => _selectedTab = 1),
-            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: _loading ? null : _logout,
+            icon: const Icon(Icons.logout),
           ),
         ],
       ),
+
       body: SafeArea(
-        child: IndexedStack(index: _selectedTab, children: pages),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedTab,
-        onDestinationSelected: (index) {
-          if (index == 2) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    FacultyAttendanceReportPage(userId: widget.userId),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Icon(Icons.school, size: 70),
+
+              const SizedBox(height: 10),
+
+              const Text(
+                'Welcome Faculty',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
-            );
-            return;
-          }
-          setState(() => _selectedTab = index);
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.analytics_outlined),
-            selectedIcon: Icon(Icons.analytics),
-            label: 'Reports',
-          ),
-        ],
-      ),
-    );
-  }
 
-  void _openFacultySecurity() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FacultySecurityCenterPage(
-          username: widget.username,
-          sessionActive: _sessionActive,
-          presentCount: _livePresentCount,
-          rejectedCount: _liveRejectedCount,
-        ),
-      ),
-    );
-  }
+              const SizedBox(height: 6),
 
-  void _openFacultyAnalytics() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FacultyAnalyticsPage(userId: widget.userId),
-      ),
-    );
-  }
-
-  void _openFacultyHistory() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FacultySessionHistoryPage(userId: widget.userId),
-      ),
-    );
-  }
-
-  void _openFacultyNotifications() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FacultyNotificationsPage(
-          sessionActive: _sessionActive,
-          presentCount: _livePresentCount,
-          rejectedCount: _liveRejectedCount,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFacultyHome(ThemeData theme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  child: Text(
-                    widget.username.isEmpty
-                        ? 'F'
-                        : widget.username.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Welcome back',
-                        style: TextStyle(fontSize: 13),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        widget.username,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        _sessionActive
-                            ? 'Attendance session is live'
-                            : 'Ready to take attendance',
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (_sessionActive)
-            _activeSessionCard()
-          else ...[
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(24),
+              Text(
+                'Employee ID: ${widget.username}',
+                textAlign: TextAlign.center,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.qr_code_2,
-                        size: 34,
-                        color: theme.colorScheme.primary,
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'Start a new attendance session',
+
+              const SizedBox(height: 20),
+
+              if (!_sessionActive)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.event_available, size: 55),
+
+                        const SizedBox(height: 12),
+
+                        const Text(
+                          'Attendance Session',
                           style: TextStyle(
                             fontSize: 20,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Set the subject, classroom dimensions and duration. AntiProxy will verify the teacher location before creating the QR.',
-                  ),
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: FilledButton.icon(
-                      onPressed: _loading ? null : _openCreateSessionDialog,
-                      icon: _loading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.add_circle_outline),
-                      label: Text(
-                        _loading
-                            ? 'VERIFYING & CREATING...'
-                            : 'START ATTENDANCE',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _featureCard(
-                    Icons.location_on_outlined,
-                    'Verified GPS',
-                    '5-point teacher location check',
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _featureCard(
-                    Icons.crop_square,
-                    'Classroom',
-                    'Length × width geofence',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Faculty tools',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: _openFacultySecurity,
-                          icon: const Icon(Icons.security_rounded),
-                          label: const Text('Security Center'),
+
+                        const SizedBox(height: 8),
+
+                        const Text(
+                          'Create a session, set the '
+                          'teacher location and geofence, '
+                          'then generate a dynamic QR code.',
+                          textAlign: TextAlign.center,
                         ),
-                        OutlinedButton.icon(
-                          onPressed: _openFacultyAnalytics,
-                          icon: const Icon(Icons.insights_rounded),
-                          label: const Text('Analytics'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: _openFacultyHistory,
-                          icon: const Icon(Icons.history_rounded),
-                          label: const Text('Session History'),
+
+                        const SizedBox(height: 18),
+
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton.icon(
+                            onPressed: _loading
+                                ? null
+                                : _openCreateSessionDialog,
+                            icon: _loading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.add),
+                            label: Text(
+                              _loading
+                                  ? 'CREATING SESSION...'
+                                  : 'CREATE ATTENDANCE SESSION',
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 14),
-          if (_statusMessage.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: theme.dividerColor),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline, size: 20),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(_statusMessage)),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 
-  Widget _featureCard(IconData icon, String title, String subtitle) {
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 24),
-            const SizedBox(height: 10),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 3),
-            Text(subtitle, style: const TextStyle(fontSize: 12)),
-          ],
-        ),
-      ),
-    );
-  }
+              if (_sessionActive) _activeSessionCard(),
 
-  Widget _buildFacultyProfile(ThemeData theme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Card(
-            elevation: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(22),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 42,
-                    child: Text(
-                      widget.username.isEmpty
-                          ? 'F'
-                          : widget.username.substring(0, 1).toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w800,
+              const SizedBox(height: 16),
+
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.assessment),
+                  title: const Text(
+                    'Attendance Reports',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: const Text('View attendance records and reports'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            FacultyAttendanceReportPage(userId: widget.userId),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    widget.username,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text('Faculty account'),
-                ],
+                    );
+                  },
+                ),
               ),
-            ),
+
+              const SizedBox(height: 12),
+
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.grey.withValues(alpha: 0.12),
+                ),
+                child: Text(_statusMessage, textAlign: TextAlign.center),
+              ),
+
+              const SizedBox(height: 25),
+
+              if (!_sessionActive)
+                ElevatedButton.icon(
+                  onPressed: _logout,
+                  icon: const Icon(Icons.logout),
+                  label: const Text('LOGOUT'),
+                ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Card(
-            elevation: 0,
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.badge_outlined),
-                  title: const Text('Employee ID'),
-                  subtitle: Text(widget.username),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.verified_user_outlined),
-                  title: const Text('Security'),
-                  subtitle: const Text(
-                    'QR, GPS, mock-location and face verification enabled',
-                  ),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.crop_square),
-                  title: const Text('Geofencing'),
-                  subtitle: const Text(
-                    'Rectangular classroom perimeter using length and width',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Card(
-            elevation: 0,
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.notifications_none_rounded),
-                  title: const Text('Notifications'),
-                  subtitle: const Text('Session and attendance alerts'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: _openFacultyNotifications,
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.security_rounded),
-                  title: const Text('Security Center'),
-                  subtitle: const Text(
-                    'Verification layers and security events',
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: _openFacultySecurity,
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.history_rounded),
-                  title: const Text('Session History'),
-                  subtitle: const Text('Review completed attendance sessions'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: _openFacultyHistory,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
-          OutlinedButton.icon(
-            onPressed: _sessionActive ? null : _logout,
-            icon: const Icon(Icons.logout),
-            label: const Text('LOG OUT'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(50),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -5041,872 +2952,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
 }
 
 // ============================================================
-// FACULTY SECURITY CENTER
-// ============================================================
-class FacultySecurityCenterPage extends StatelessWidget {
-  final String username;
-  final bool sessionActive;
-  final int presentCount;
-  final int rejectedCount;
-
-  const FacultySecurityCenterPage({
-    super.key,
-    required this.username,
-    required this.sessionActive,
-    required this.presentCount,
-    required this.rejectedCount,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final layers = [
-      (
-        'Dynamic QR',
-        'Unique session token protects the attendance session.',
-        Icons.qr_code_2_rounded,
-      ),
-      (
-        '5-point GPS',
-        'Multiple readings establish a stable verification point.',
-        Icons.gps_fixed_rounded,
-      ),
-      (
-        'Mock GPS detection',
-        'Simulated location signals are rejected by the existing flow.',
-        Icons.location_disabled_rounded,
-      ),
-      (
-        'Rectangular geofence',
-        'Students must be inside the configured classroom boundary.',
-        Icons.crop_square_rounded,
-      ),
-      (
-        'Face verification',
-        'Student identity verification remains part of attendance.',
-        Icons.face_retouching_natural_rounded,
-      ),
-      (
-        'Duplicate prevention',
-        'Repeated attendance for the same session is blocked.',
-        Icons.block_rounded,
-      ),
-    ];
-    return Scaffold(
-      appBar: AppBar(title: const Text('Faculty Security Center')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: scheme.primaryContainer,
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 26,
-                  child: Text(
-                    username.isEmpty
-                        ? 'F'
-                        : username.substring(0, 1).toUpperCase(),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'AntiProxy Security',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        sessionActive
-                            ? 'Live session protected'
-                            : 'Protection layers ready',
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.verified_rounded, color: scheme.primary, size: 32),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _metric(
-                  context,
-                  'Present',
-                  presentCount.toString(),
-                  Icons.how_to_reg_rounded,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _metric(
-                  context,
-                  'Rejected',
-                  rejectedCount.toString(),
-                  Icons.gpp_bad_rounded,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            'Verification layers',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 10),
-          ...layers.map(
-            (item) => Card(
-              elevation: 0,
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: CircleAvatar(child: Icon(item.$3, size: 21)),
-                title: Text(
-                  item.$1,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(item.$2),
-                trailing: const Icon(Icons.check_circle_rounded),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            elevation: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Security activity',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
-                  ),
-                  const SizedBox(height: 10),
-                  _event(
-                    Icons.qr_code_2_rounded,
-                    'QR session protection',
-                    'Dynamic QR is used for the active session.',
-                  ),
-                  _event(
-                    Icons.location_on_rounded,
-                    'Location protection',
-                    'Teacher and student location validation remain enabled.',
-                  ),
-                  _event(
-                    Icons.face_rounded,
-                    'Identity protection',
-                    'Face verification remains part of attendance marking.',
-                  ),
-                  _event(
-                    Icons.crop_square_rounded,
-                    'Boundary protection',
-                    'Rectangular classroom geofence is enforced server-side.',
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _metric(
-    BuildContext context,
-    String label,
-    String value,
-    IconData icon,
-  ) {
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Icon(icon),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  Text(label),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _event(IconData icon, String title, String subtitle) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                Text(subtitle, style: const TextStyle(fontSize: 12)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================
-// FACULTY ANALYTICS
-// ============================================================
-class FacultyAnalyticsPage extends StatefulWidget {
-  final dynamic userId;
-  const FacultyAnalyticsPage({super.key, required this.userId});
-  @override
-  State<FacultyAnalyticsPage> createState() => _FacultyAnalyticsPageState();
-}
-
-class _FacultyAnalyticsPageState extends State<FacultyAnalyticsPage> {
-  bool _loading = true;
-  String? _error;
-  List<Map<String, dynamic>> _reports = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final response = await http.get(
-        Uri.parse('$backendUrl/faculty/attendance-report/${widget.userId}'),
-      );
-      if (response.statusCode != 200)
-        throw Exception('Server returned ${response.statusCode}.');
-      final decoded = jsonDecode(response.body);
-      final raw = decoded is List
-          ? decoded
-          : (decoded is Map && decoded['reports'] is List
-                ? decoded['reports']
-                : decoded is Map && decoded['data'] is List
-                ? decoded['data']
-                : <dynamic>[]);
-      _reports = raw
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
-      if (mounted) setState(() => _loading = false);
-    } catch (e) {
-      if (mounted)
-        setState(() {
-          _loading = false;
-          _error = e.toString();
-        });
-    }
-  }
-
-  double _num(dynamic v) => double.tryParse(v?.toString() ?? '') ?? 0;
-  int _int(dynamic v) => int.tryParse(v?.toString() ?? '') ?? 0;
-
-  @override
-  Widget build(BuildContext context) {
-    final sessions = _reports.length;
-    int present = 0, total = 0;
-    for (final r in _reports) {
-      present += _int(r['present'] ?? r['present_count']);
-      total += _int(r['total'] ?? r['total_students']);
-    }
-    final rate = total == 0 ? 0.0 : present * 100 / total;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Faculty Analytics'),
-        actions: [
-          IconButton(
-            onPressed: _loading ? null : _load,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.cloud_off_rounded, size: 48),
-                    const SizedBox(height: 12),
-                    Text(_error!, textAlign: TextAlign.center),
-                    const SizedBox(height: 12),
-                    FilledButton(onPressed: _load, child: const Text('Retry')),
-                  ],
-                ),
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _stat(
-                          context,
-                          'Sessions',
-                          sessions.toString(),
-                          Icons.calendar_month_rounded,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _stat(
-                          context,
-                          'Present',
-                          present.toString(),
-                          Icons.how_to_reg_rounded,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  _stat(
-                    context,
-                    'Average attendance',
-                    '${rate.toStringAsFixed(1)}%',
-                    Icons.insights_rounded,
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Attendance overview',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 10),
-                  Card(
-                    elevation: 0,
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${rate.toStringAsFixed(1)}%',
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          LinearProgressIndicator(
-                            value: (rate / 100).clamp(0, 1),
-                            minHeight: 10,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '$present verified attendance records across the available report data.',
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  const Text(
-                    'Sessions',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 8),
-                  ..._reports.asMap().entries.map(
-                    (entry) => _reportCard(context, entry.value, entry.key + 1),
-                  ),
-                  if (_reports.isEmpty)
-                    const Card(
-                      elevation: 0,
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Text('No report data is available yet.'),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-    );
-  }
-
-  Widget _stat(
-    BuildContext context,
-    String title,
-    String value,
-    IconData icon,
-  ) => Card(
-    elevation: 0,
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Icon(icon),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(title),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  Widget _reportCard(BuildContext context, Map<String, dynamic> r, int n) {
-    final subject =
-        (r['subject_name'] ?? r['subject'] ?? r['subject_code'] ?? 'Session')
-            .toString();
-    final date = (r['attendance_date'] ?? r['date'] ?? '').toString();
-    final p = _int(r['present'] ?? r['present_count']);
-    final t = _int(r['total'] ?? r['total_students']);
-    final pct = t == 0 ? 0.0 : p * 100 / t;
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(child: Text('$n')),
-        title: Text(
-          subject,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text(
-          date.isEmpty ? '$p / $t present' : '$date • $p / $t present',
-        ),
-        trailing: Text(
-          '${pct.toStringAsFixed(0)}%',
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================
-// FACULTY SESSION HISTORY + STUDENT DETAILS
-// ============================================================
-class FacultySessionHistoryPage extends StatefulWidget {
-  final dynamic userId;
-
-  const FacultySessionHistoryPage({super.key, required this.userId});
-
-  @override
-  State<FacultySessionHistoryPage> createState() =>
-      _FacultySessionHistoryPageState();
-}
-
-class _FacultySessionHistoryPageState extends State<FacultySessionHistoryPage> {
-  bool _loading = true;
-  String? _error;
-
-  List<Map<String, dynamic>> _reports = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
-    }
-
-    try {
-      final response = await http.get(
-        Uri.parse('$backendUrl/faculty/attendance-report/${widget.userId}'),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Server returned ${response.statusCode}.');
-      }
-
-      final decoded = jsonDecode(response.body);
-
-      final dynamic raw = decoded is List
-          ? decoded
-          : decoded is Map && decoded['reports'] is List
-          ? decoded['reports']
-          : decoded is Map && decoded['data'] is List
-          ? decoded['data']
-          : <dynamic>[];
-
-      _reports = raw is List
-          ? raw
-                .whereType<Map>()
-                .map((item) => Map<String, dynamic>.from(item))
-                .toList()
-          : <Map<String, dynamic>>[];
-
-      if (mounted) {
-        setState(() {
-          _loading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = e.toString();
-        });
-      }
-    }
-  }
-
-  // Safely converts the JSON "students" array into
-  // List<Map<String, dynamic>>.
-  List<Map<String, dynamic>> _studentList(dynamic value) {
-    if (value is! List) {
-      return <Map<String, dynamic>>[];
-    }
-
-    return value
-        .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
-        .toList();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Session History'),
-        actions: [
-          IconButton(
-            onPressed: _loading ? null : _load,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.cloud_off_rounded, size: 48),
-                    const SizedBox(height: 12),
-                    Text(_error!, textAlign: TextAlign.center),
-                    const SizedBox(height: 12),
-                    FilledButton(onPressed: _load, child: const Text('Retry')),
-                  ],
-                ),
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  const Text(
-                    'Completed attendance sessions',
-                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 12),
-
-                  ..._reports.asMap().entries.map((entry) {
-                    final r = entry.value;
-
-                    final subject =
-                        (r['subject_name'] ??
-                                r['subject'] ??
-                                r['subject_code'] ??
-                                'Session')
-                            .toString();
-
-                    final date = (r['attendance_date'] ?? r['date'] ?? '')
-                        .toString();
-
-                    // IMPORTANT:
-                    // Convert List<dynamic> from JSON into
-                    // List<Map<String, dynamic>> before passing
-                    // it to the student details page.
-                    final studentList = _studentList(r['students']);
-
-                    final count = studentList.length;
-
-                    return Card(
-                      elevation: 0,
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.event_note_rounded),
-                        ),
-                        title: Text(
-                          subject,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: Text(
-                          date.isEmpty ? 'Session ${entry.key + 1}' : date,
-                        ),
-                        trailing: Text(
-                          '$count\nstudents',
-                          textAlign: TextAlign.center,
-                        ),
-                        onTap: studentList.isNotEmpty
-                            ? () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        FacultySessionStudentDetailsPage(
-                                          subject: subject,
-                                          date: date,
-                                          students: studentList,
-                                        ),
-                                  ),
-                                );
-                              }
-                            : null,
-                      ),
-                    );
-                  }),
-
-                  if (_reports.isEmpty)
-                    const Card(
-                      elevation: 0,
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Text('No session history is available yet.'),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-    );
-  }
-}
-
-// ============================================================
-// FACULTY SESSION STUDENT DETAILS
-// ============================================================
-class FacultySessionStudentDetailsPage extends StatelessWidget {
-  final String subject;
-  final String date;
-  final List<dynamic> students;
-  const FacultySessionStudentDetailsPage({
-    super.key,
-    required this.subject,
-    required this.date,
-    required this.students,
-  });
-  @override
-  Widget build(BuildContext context) {
-    int present = 0, absent = 0, late = 0;
-    for (final item in students) {
-      if (item is! Map) continue;
-      final status = (item['status'] ?? '').toString().toLowerCase();
-      if (status == 'present')
-        present++;
-      else if (status == 'late')
-        late++;
-      else
-        absent++;
-    }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Student Attendance Details')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            elevation: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    subject,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  if (date.isNotEmpty) Text(date),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Chip(label: Text('Present $present')),
-                      Chip(label: Text('Late $late')),
-                      Chip(label: Text('Absent $absent')),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          ...students.whereType<Map>().map((raw) {
-            final m = Map<String, dynamic>.from(raw);
-            final name =
-                (m['full_name'] ??
-                        m['name'] ??
-                        m['student_name'] ??
-                        m['student_id'] ??
-                        'Student')
-                    .toString();
-            final usn = (m['student_id'] ?? m['usn'] ?? '').toString();
-            final status = (m['status'] ?? '').toString();
-            final ok =
-                status.toLowerCase() == 'present' ||
-                status.toLowerCase() == 'late';
-            return Card(
-              elevation: 0,
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: CircleAvatar(
-                  child: Icon(
-                    ok ? Icons.verified_rounded : Icons.person_outline_rounded,
-                  ),
-                ),
-                title: Text(
-                  name,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(usn.isEmpty ? status : '$usn • $status'),
-                trailing: Icon(
-                  ok ? Icons.check_circle_rounded : Icons.cancel_rounded,
-                ),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================
-// FACULTY NOTIFICATIONS
-// ============================================================
-class FacultyNotificationsPage extends StatelessWidget {
-  final bool sessionActive;
-  final int presentCount;
-  final int rejectedCount;
-  const FacultyNotificationsPage({
-    super.key,
-    required this.sessionActive,
-    required this.presentCount,
-    required this.rejectedCount,
-  });
-  @override
-  Widget build(BuildContext context) {
-    final items = <Map<String, dynamic>>[
-      if (sessionActive)
-        {
-          'icon': Icons.play_circle_fill_rounded,
-          'title': 'Attendance session is live',
-          'subtitle': '$presentCount students currently marked.',
-        },
-      if (rejectedCount > 0)
-        {
-          'icon': Icons.warning_amber_rounded,
-          'title': 'Attendance attempts rejected',
-          'subtitle':
-              '$rejectedCount rejection(s) reported by the current live session.',
-        },
-      {
-        'icon': Icons.security_rounded,
-        'title': 'Security protection active',
-        'subtitle':
-            'QR, GPS, mock-location, geofence and face verification remain enabled.',
-      },
-      {
-        'icon': Icons.info_outline_rounded,
-        'title': 'AntiProxy system',
-        'subtitle':
-            'Attendance actions are validated through the configured backend.',
-      },
-    ];
-    return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (items.isEmpty)
-            const Card(
-              elevation: 0,
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Text('No notifications.'),
-              ),
-            ),
-          ...items.map(
-            (item) => Card(
-              elevation: 0,
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: CircleAvatar(child: Icon(item['icon'] as IconData)),
-                title: Text(
-                  item['title'] as String,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(item['subtitle'] as String),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================
 // ADMIN DASHBOARD
 // ============================================================
 
@@ -5923,10 +2968,12 @@ class AdminDashboard extends StatefulWidget {
   });
 
   @override
-  State<AdminDashboard> createState() => _AdminDashboardState();
+  State<AdminDashboard> createState() =>
+      _AdminDashboardState();
 }
 
-class _AdminDashboardState extends State<AdminDashboard> {
+class _AdminDashboardState
+    extends State<AdminDashboard> {
   Map<String, dynamic>? _adminData;
 
   bool _loading = true;
@@ -5939,7 +2986,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs =
+        await SharedPreferences.getInstance();
 
     return prefs.getString('auth_token');
   }
@@ -5960,14 +3008,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
         setState(() {
           _loading = false;
-          _errorMessage = 'Authentication token not found.';
+          _errorMessage =
+              'Authentication token not found.';
         });
 
         return;
       }
 
       final response = await http.get(
-        Uri.parse('$backendUrl/admin/dashboard'),
+        Uri.parse(
+          '$backendUrl/admin/dashboard',
+        ),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -5987,57 +3038,83 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return;
       }
 
-      final decoded = jsonDecode(response.body);
+      final decoded =
+          jsonDecode(response.body);
 
       if (!mounted) return;
 
       setState(() {
-        _adminData = Map<String, dynamic>.from(decoded);
+        _adminData =
+            Map<String, dynamic>.from(
+          decoded,
+        );
 
         _loading = false;
         _errorMessage = null;
       });
     } catch (e) {
-      debugPrint('Admin dashboard error: $e');
+      debugPrint(
+        'Admin dashboard error: $e',
+      );
 
       if (!mounted) return;
 
       setState(() {
         _loading = false;
-        _errorMessage = 'Unable to connect to the backend server.';
+        _errorMessage =
+            'Unable to connect to the backend server.';
       });
     }
   }
 
   int _overviewValue(String key) {
-    final overview = _adminData?['overview'];
+    final overview =
+        _adminData?['overview'];
 
     if (overview is Map) {
-      return int.tryParse(overview[key]?.toString() ?? '0') ?? 0;
+      return int.tryParse(
+            overview[key]?.toString() ?? '0',
+          ) ??
+          0;
     }
 
     return 0;
   }
 
   Future<void> _logout() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Logout'),
-          content: const Text('Are you sure you want to logout?'),
+          title: const Text(
+            'Logout',
+          ),
+          content: const Text(
+            'Are you sure you want to logout?',
+          ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(dialogContext, false);
+                Navigator.pop(
+                  dialogContext,
+                  false,
+                );
               },
-              child: const Text('CANCEL'),
+              child: const Text(
+                'CANCEL',
+              ),
             ),
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(dialogContext, true);
+                Navigator.pop(
+                  dialogContext,
+                  true,
+                );
               },
-              child: const Text('LOGOUT'),
+              child: const Text(
+                'LOGOUT',
+              ),
             ),
           ],
         );
@@ -6048,7 +3125,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
+    final prefs =
+        await SharedPreferences.getInstance();
 
     await prefs.remove('auth_token');
     await prefs.remove('user_role');
@@ -6058,7 +3136,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (!mounted) return;
 
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => LoginPage(cameras: widget.cameras)),
+      MaterialPageRoute(
+        builder: (_) => LoginPage(
+          cameras: widget.cameras,
+        ),
+      ),
       (route) => false,
     );
   }
@@ -6067,7 +3149,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => AdminDepartmentsPage(cameras: widget.cameras),
+        builder: (_) =>
+            AdminDepartmentsPage(
+          cameras: widget.cameras,
+        ),
       ),
     );
   }
@@ -6076,7 +3161,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => AdminStudentsPage(cameras: widget.cameras),
+        builder: (_) =>
+            AdminStudentsPage(
+          cameras: widget.cameras,
+        ),
       ),
     );
   }
@@ -6085,7 +3173,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => AdminFacultyPage(cameras: widget.cameras),
+        builder: (_) =>
+            AdminFacultyPage(
+          cameras: widget.cameras,
+        ),
       ),
     );
   }
@@ -6094,7 +3185,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => AdminSubjectsPage(cameras: widget.cameras),
+        builder: (_) =>
+            AdminSubjectsPage(
+          cameras: widget.cameras,
+        ),
       ),
     );
   }
@@ -6103,7 +3197,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => AdminAttendanceSessionsPage(cameras: widget.cameras),
+        builder: (_) =>
+            AdminAttendanceSessionsPage(
+          cameras: widget.cameras,
+        ),
       ),
     );
   }
@@ -6112,7 +3209,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => AdminAttendanceRecordsPage(cameras: widget.cameras),
+        builder: (_) =>
+            AdminAttendanceRecordsPage(
+          cameras: widget.cameras,
+        ),
       ),
     );
   }
@@ -6121,7 +3221,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => AdminUserManagementPage(cameras: widget.cameras),
+        builder: (_) =>
+            AdminUserManagementPage(
+          cameras: widget.cameras,
+        ),
       ),
     );
   }
@@ -6130,7 +3233,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => AdminReportsAnalyticsPage(cameras: widget.cameras),
+        builder: (_) =>
+            AdminReportsAnalyticsPage(
+          cameras: widget.cameras,
+        ),
       ),
     );
   }
@@ -6139,7 +3245,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => AdminSecurityCenterPage(cameras: widget.cameras),
+        builder: (_) =>
+            AdminSecurityCenterPage(
+          cameras: widget.cameras,
+        ),
       ),
     );
   }
@@ -6147,179 +3256,279 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor:
+          Theme.of(context)
+              .colorScheme
+              .surface,
 
       appBar: AppBar(
         elevation: 0,
         titleSpacing: 20,
         title: const Text(
           'Admin Dashboard',
-          style: TextStyle(fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+          ),
         ),
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            onPressed: _loading ? null : _loadDashboard,
-            icon: const Icon(Icons.refresh_rounded),
+            onPressed:
+                _loading
+                    ? null
+                    : _loadDashboard,
+            icon: const Icon(
+              Icons.refresh_rounded,
+            ),
           ),
           IconButton(
             tooltip: 'Logout',
             onPressed: _logout,
-            icon: const Icon(Icons.logout_rounded),
+            icon: const Icon(
+              Icons.logout_rounded,
+            ),
           ),
           const SizedBox(width: 8),
         ],
       ),
 
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child:
+                  CircularProgressIndicator(),
+            )
           : _errorMessage != null
-          ? _AdminErrorView(message: _errorMessage!, onRetry: _loadDashboard)
-          : RefreshIndicator(
-              onRefresh: _loadDashboard,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-                children: [
-                  _buildWelcomeCard(context),
-
-                  const SizedBox(height: 26),
-
-                  _buildSectionTitle(
-                    context,
-                    'Institution Overview',
-                    'Monitor the institution at a glance',
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _buildOverviewGrid(context),
-
-                  const SizedBox(height: 28),
-
-                  _buildSectionTitle(
-                    context,
-                    'Administration',
-                    'Manage users, analytics and system security',
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _AdminActionCard(
-                    icon: Icons.people_alt_rounded,
-                    title: 'User Management',
-                    subtitle:
-                        'Manage students, faculty and administrative users.',
-                    onTap: _openUserManagement,
-                  ),
-
-                  _AdminActionCard(
-                    icon: Icons.analytics_rounded,
-                    title: 'Reports & Analytics',
-                    subtitle: 'Review institutional attendance and activity.',
-                    onTap: _openReports,
-                  ),
-
-                  _AdminActionCard(
-                    icon: Icons.security_rounded,
-                    title: 'Security Center',
-                    subtitle:
-                        'Review available AntiProxy security information.',
-                    onTap: _openSecurity,
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  OutlinedButton.icon(
-                    onPressed: _logout,
-                    icon: const Icon(Icons.logout_rounded),
-                    label: const Text('LOGOUT'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 52),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+              ? _AdminErrorView(
+                  message: _errorMessage!,
+                  onRetry: _loadDashboard,
+                )
+              : RefreshIndicator(
+                  onRefresh:
+                      _loadDashboard,
+                  child: ListView(
+                    physics:
+                        const AlwaysScrollableScrollPhysics(),
+                    padding:
+                        const EdgeInsets.fromLTRB(
+                      16,
+                      16,
+                      16,
+                      28,
                     ),
+                    children: [
+                      _buildWelcomeCard(
+                        context,
+                      ),
+
+                      const SizedBox(
+                        height: 26,
+                      ),
+
+                      _buildSectionTitle(
+                        context,
+                        'Institution Overview',
+                        'Monitor the institution at a glance',
+                      ),
+
+                      const SizedBox(
+                        height: 12,
+                      ),
+
+                      _buildOverviewGrid(
+                        context,
+                      ),
+
+                      const SizedBox(
+                        height: 28,
+                      ),
+
+                      _buildSectionTitle(
+                        context,
+                        'Administration',
+                        'Manage users, analytics and system security',
+                      ),
+
+                      const SizedBox(
+                        height: 12,
+                      ),
+
+                      _AdminActionCard(
+                        icon:
+                            Icons.people_alt_rounded,
+                        title:
+                            'User Management',
+                        subtitle:
+                            'Manage students, faculty and administrative users.',
+                        onTap:
+                            _openUserManagement,
+                      ),
+
+                      _AdminActionCard(
+                        icon:
+                            Icons.analytics_rounded,
+                        title:
+                            'Reports & Analytics',
+                        subtitle:
+                            'Review institutional attendance and activity.',
+                        onTap:
+                            _openReports,
+                      ),
+
+                      _AdminActionCard(
+                        icon:
+                            Icons.security_rounded,
+                        title:
+                            'Security Center',
+                        subtitle:
+                            'Review available AntiProxy security information.',
+                        onTap:
+                            _openSecurity,
+                      ),
+
+                      const SizedBox(
+                        height: 20,
+                      ),
+
+                      OutlinedButton.icon(
+                        onPressed: _logout,
+                        icon: const Icon(
+                          Icons.logout_rounded,
+                        ),
+                        label: const Text(
+                          'LOGOUT',
+                        ),
+                        style:
+                            OutlinedButton.styleFrom(
+                          minimumSize:
+                              const Size(
+                            double.infinity,
+                            52,
+                          ),
+                          shape:
+                              RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(
+                              16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
     );
   }
 
-  Widget _buildWelcomeCard(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+  Widget _buildWelcomeCard(
+    BuildContext context,
+  ) {
+    final colorScheme =
+        Theme.of(context)
+            .colorScheme;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius:
+            BorderRadius.circular(22),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [colorScheme.primary, colorScheme.primaryContainer],
+          colors: [
+            colorScheme.primary,
+            colorScheme.primaryContainer,
+          ],
         ),
         boxShadow: [
           BoxShadow(
             blurRadius: 16,
-            offset: const Offset(0, 7),
-            color: Colors.black.withValues(alpha: 0.10),
+            offset:
+                const Offset(0, 7),
+            color: Colors.black
+                .withValues(
+              alpha: 0.10,
+            ),
           ),
         ],
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Container(
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.20),
-              borderRadius: BorderRadius.circular(17),
+              color: Colors.white
+                  .withValues(
+                alpha: 0.20,
+              ),
+              borderRadius:
+                  BorderRadius.circular(
+                17,
+              ),
             ),
             child: const Icon(
-              Icons.admin_panel_settings_rounded,
+              Icons
+                  .admin_panel_settings_rounded,
               color: Colors.white,
               size: 31,
             ),
           ),
 
-          const SizedBox(width: 15),
+          const SizedBox(
+            width: 15,
+          ),
 
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 const Text(
                   'Welcome, Administrator',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
-                    fontWeight: FontWeight.w800,
+                    fontWeight:
+                        FontWeight.w800,
                   ),
                 ),
 
-                const SizedBox(height: 5),
+                const SizedBox(
+                  height: 5,
+                ),
 
                 Text(
                   widget.username,
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  overflow:
+                      TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.95),
+                    color: Colors.white
+                        .withValues(
+                      alpha: 0.95,
+                    ),
                     fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    fontWeight:
+                        FontWeight.w600,
                   ),
                 ),
 
-                const SizedBox(height: 4),
+                const SizedBox(
+                  height: 4,
+                ),
 
                 Text(
                   'Institution Administration Portal',
                   maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  overflow:
+                      TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.85),
+                    color: Colors.white
+                        .withValues(
+                      alpha: 0.85,
+                    ),
                     fontSize: 12.5,
                   ),
                 ),
@@ -6337,84 +3546,130 @@ class _AdminDashboardState extends State<AdminDashboard> {
     String subtitle,
   ) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+          style: const TextStyle(
+            fontSize: 21,
+            fontWeight:
+                FontWeight.w800,
+          ),
         ),
-        const SizedBox(height: 3),
+        const SizedBox(
+          height: 3,
+        ),
         Text(
           subtitle,
           style: TextStyle(
             fontSize: 13,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            color: Theme.of(context)
+                .colorScheme
+                .onSurfaceVariant,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildOverviewGrid(BuildContext context) {
+  Widget _buildOverviewGrid(
+    BuildContext context,
+  ) {
     return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
+      builder:
+          (context, constraints) {
+        final width =
+            constraints.maxWidth;
 
-        final columns = width >= 1000 ? 3 : 2;
+        final columns =
+            width >= 1000
+                ? 3
+                : 2;
 
         return GridView.count(
           crossAxisCount: columns,
           shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+          physics:
+              const NeverScrollableScrollPhysics(),
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
 
           // IMPORTANT:
           // This replaces the old 1.25 ratio
           // which caused the 23px overflow.
-          childAspectRatio: width < 400 ? 0.88 : 1.05,
+          childAspectRatio:
+              width < 400
+                  ? 0.88
+                  : 1.05,
 
           children: [
             _AdminOverviewCard(
               title: 'Departments',
-              value: _overviewValue('total_departments'),
-              icon: Icons.account_balance_rounded,
-              onTap: _openDepartments,
+              value: _overviewValue(
+                'total_departments',
+              ),
+              icon:
+                  Icons.account_balance_rounded,
+              onTap:
+                  _openDepartments,
             ),
 
             _AdminOverviewCard(
               title: 'Students',
-              value: _overviewValue('total_students'),
-              icon: Icons.school_rounded,
-              onTap: _openStudents,
+              value: _overviewValue(
+                'total_students',
+              ),
+              icon:
+                  Icons.school_rounded,
+              onTap:
+                  _openStudents,
             ),
 
             _AdminOverviewCard(
               title: 'Faculty',
-              value: _overviewValue('total_faculty'),
-              icon: Icons.people_rounded,
-              onTap: _openFaculty,
+              value: _overviewValue(
+                'total_faculty',
+              ),
+              icon:
+                  Icons.people_rounded,
+              onTap:
+                  _openFaculty,
             ),
 
             _AdminOverviewCard(
               title: 'Subjects',
-              value: _overviewValue('total_subjects'),
-              icon: Icons.menu_book_rounded,
-              onTap: _openSubjects,
+              value: _overviewValue(
+                'total_subjects',
+              ),
+              icon:
+                  Icons.menu_book_rounded,
+              onTap:
+                  _openSubjects,
             ),
 
             _AdminOverviewCard(
-              title: 'Attendance Sessions',
-              value: _overviewValue('total_sessions'),
-              icon: Icons.event_available_rounded,
-              onTap: _openSessions,
+              title:
+                  'Attendance Sessions',
+              value: _overviewValue(
+                'total_sessions',
+              ),
+              icon:
+                  Icons.event_available_rounded,
+              onTap:
+                  _openSessions,
             ),
 
             _AdminOverviewCard(
-              title: 'Attendance Records',
-              value: _overviewValue('total_attendance_records'),
-              icon: Icons.fact_check_rounded,
-              onTap: _openAttendanceRecords,
+              title:
+                  'Attendance Records',
+              value: _overviewValue(
+                'total_attendance_records',
+              ),
+              icon:
+                  Icons.fact_check_rounded,
+              onTap:
+                  _openAttendanceRecords,
             ),
           ],
         );
@@ -6423,11 +3678,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 }
 
+
 // ============================================================
 // ADMIN OVERVIEW CARD
 // ============================================================
 
-class _AdminOverviewCard extends StatelessWidget {
+class _AdminOverviewCard
+    extends StatelessWidget {
   final String title;
   final int value;
   final IconData icon;
@@ -6442,32 +3699,56 @@ class _AdminOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colorScheme =
+        Theme.of(context)
+            .colorScheme;
 
     return Card(
       margin: EdgeInsets.zero,
       elevation: 1.5,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      clipBehavior:
+          Clip.antiAlias,
+      shape:
+          RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.circular(18),
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius:
+            BorderRadius.circular(18),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding:
+              const EdgeInsets.all(14),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize:
+                MainAxisSize.min,
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
                     width: 46,
                     height: 46,
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(14),
+                    decoration:
+                        BoxDecoration(
+                      color: colorScheme
+                          .primary
+                          .withValues(
+                        alpha: 0.10,
+                      ),
+                      borderRadius:
+                          BorderRadius.circular(
+                        14,
+                      ),
                     ),
-                    child: Icon(icon, size: 24, color: colorScheme.primary),
+                    child: Icon(
+                      icon,
+                      size: 24,
+                      color:
+                          colorScheme.primary,
+                    ),
                   ),
 
                   const Spacer(),
@@ -6475,53 +3756,70 @@ class _AdminOverviewCard extends StatelessWidget {
                   Container(
                     width: 30,
                     height: 30,
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest,
-                      shape: BoxShape.circle,
+                    decoration:
+                        BoxDecoration(
+                      color: colorScheme
+                          .surfaceContainerHighest,
+                      shape:
+                          BoxShape.circle,
                     ),
                     child: Icon(
-                      Icons.arrow_forward_rounded,
+                      Icons
+                          .arrow_forward_rounded,
                       size: 17,
-                      color: colorScheme.onSurfaceVariant,
+                      color: colorScheme
+                          .onSurfaceVariant,
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(
+                height: 12,
+              ),
 
               Text(
                 value.toString(),
                 style: const TextStyle(
                   fontSize: 28,
-                  fontWeight: FontWeight.w800,
+                  fontWeight:
+                      FontWeight.w800,
                   height: 1.0,
                 ),
               ),
 
-              const SizedBox(height: 7),
+              const SizedBox(
+                height: 7,
+              ),
 
               Text(
                 title,
                 maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                overflow:
+                    TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w700,
+                  fontWeight:
+                      FontWeight.w700,
                   height: 1.15,
                 ),
               ),
 
-              const SizedBox(height: 7),
+              const SizedBox(
+                height: 7,
+              ),
 
               Align(
-                alignment: Alignment.centerRight,
+                alignment:
+                    Alignment.centerRight,
                 child: Text(
                   'View  →',
                   style: TextStyle(
-                    color: colorScheme.primary,
+                    color:
+                        colorScheme.primary,
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontWeight:
+                        FontWeight.w700,
                   ),
                 ),
               ),
@@ -6533,11 +3831,13 @@ class _AdminOverviewCard extends StatelessWidget {
   }
 }
 
+
 // ============================================================
 // ADMIN ACTION CARD
 // ============================================================
 
-class _AdminActionCard extends StatelessWidget {
+class _AdminActionCard
+    extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
@@ -6552,68 +3852,107 @@ class _AdminActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final colorScheme =
+        Theme.of(context)
+            .colorScheme;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin:
+          const EdgeInsets.only(
+        bottom: 12,
+      ),
       elevation: 1.5,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      clipBehavior:
+          Clip.antiAlias,
+      shape:
+          RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.circular(18),
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius:
+            BorderRadius.circular(18),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding:
+              const EdgeInsets.all(16),
           child: Row(
             children: [
               Container(
                 width: 52,
                 height: 52,
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(15),
+                decoration:
+                    BoxDecoration(
+                  color: colorScheme
+                      .primary
+                      .withValues(
+                    alpha: 0.10,
+                  ),
+                  borderRadius:
+                      BorderRadius.circular(
+                    15,
+                  ),
                 ),
-                child: Icon(icon, color: colorScheme.primary, size: 27),
+                child: Icon(
+                  icon,
+                  color:
+                      colorScheme.primary,
+                  size: 27,
+                ),
               ),
 
-              const SizedBox(width: 14),
+              const SizedBox(
+                width: 14,
+              ),
 
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
                       maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      overflow:
+                          TextOverflow.ellipsis,
+                      style:
+                          const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w800,
+                        fontWeight:
+                            FontWeight.w800,
                       ),
                     ),
 
-                    const SizedBox(height: 4),
+                    const SizedBox(
+                      height: 4,
+                    ),
 
                     Text(
                       subtitle,
                       maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      overflow:
+                          TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 13,
                         height: 1.25,
-                        color: colorScheme.onSurfaceVariant,
+                        color: colorScheme
+                            .onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(width: 8),
+              const SizedBox(
+                width: 8,
+              ),
 
               Icon(
-                Icons.arrow_forward_ios_rounded,
+                Icons
+                    .arrow_forward_ios_rounded,
                 size: 15,
-                color: colorScheme.onSurfaceVariant,
+                color: colorScheme
+                    .onSurfaceVariant,
               ),
             ],
           ),
@@ -6623,51 +3962,83 @@ class _AdminActionCard extends StatelessWidget {
   }
 }
 
+
 // ============================================================
 // ADMIN ERROR VIEW
 // ============================================================
 
-class _AdminErrorView extends StatelessWidget {
+class _AdminErrorView
+    extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _AdminErrorView({required this.message, required this.onRetry});
+  const _AdminErrorView({
+    required this.message,
+    required this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding:
+            const EdgeInsets.all(24),
         child: Card(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding:
+                const EdgeInsets.all(24),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize:
+                  MainAxisSize.min,
               children: [
                 Icon(
-                  Icons.cloud_off_rounded,
+                  Icons
+                      .cloud_off_rounded,
                   size: 54,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: Theme.of(
+                    context,
+                  )
+                      .colorScheme
+                      .primary,
                 ),
 
-                const SizedBox(height: 14),
+                const SizedBox(
+                  height: 14,
+                ),
 
                 const Text(
                   'Unable to load dashboard',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  textAlign:
+                      TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight:
+                        FontWeight.w700,
+                  ),
                 ),
 
-                const SizedBox(height: 8),
+                const SizedBox(
+                  height: 8,
+                ),
 
-                Text(message, textAlign: TextAlign.center),
+                Text(
+                  message,
+                  textAlign:
+                      TextAlign.center,
+                ),
 
-                const SizedBox(height: 18),
+                const SizedBox(
+                  height: 18,
+                ),
 
                 ElevatedButton.icon(
                   onPressed: onRetry,
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('RETRY'),
+                  icon: const Icon(
+                    Icons.refresh_rounded,
+                  ),
+                  label: const Text(
+                    'RETRY',
+                  ),
                 ),
               ],
             ),
@@ -6678,22 +4049,30 @@ class _AdminErrorView extends StatelessWidget {
   }
 }
 
+
 // ============================================================
 // USER MANAGEMENT
 // ============================================================
 
-class AdminUserManagementPage extends StatefulWidget {
+class AdminUserManagementPage
+    extends StatefulWidget {
   final List<CameraDescription> cameras;
 
-  const AdminUserManagementPage({super.key, required this.cameras});
+  const AdminUserManagementPage({
+    super.key,
+    required this.cameras,
+  });
 
   @override
-  State<AdminUserManagementPage> createState() =>
-      _AdminUserManagementPageState();
+  State<AdminUserManagementPage>
+      createState() =>
+          _AdminUserManagementPageState();
 }
 
-class _AdminUserManagementPageState extends State<AdminUserManagementPage>
-    with SingleTickerProviderStateMixin {
+class _AdminUserManagementPageState
+    extends State<AdminUserManagementPage>
+    with
+        SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   bool _loading = true;
@@ -6703,14 +4082,15 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage>
   List<dynamic> _faculty = [];
   List<dynamic> _administrators = [];
 
-  String _studentSearch = '';
-  String _facultySearch = '';
-
   @override
   void initState() {
     super.initState();
 
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController =
+        TabController(
+      length: 3,
+      vsync: this,
+    );
 
     _loadUsers();
   }
@@ -6722,623 +4102,390 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage>
   }
 
   Future<void> _loadUsers() async {
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
-    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs =
+          await SharedPreferences
+              .getInstance();
 
-      final token = prefs.getString('auth_token');
-
-      if (token == null || token.isEmpty) {
-        throw Exception('Authentication token not found.');
-      }
+      final token =
+          prefs.getString(
+        'auth_token',
+      );
 
       final response = await http.get(
-        Uri.parse('$backendUrl/admin/users'),
+        Uri.parse(
+          '$backendUrl/admin/users',
+        ),
         headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
+          'Authorization':
+              'Bearer $token',
         },
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Server returned ${response.statusCode}');
-      }
-
-      final decoded = jsonDecode(response.body);
-
-      if (decoded is! Map) {
-        throw Exception('Invalid response from server.');
-      }
-
-      if (decoded['success'] != true) {
         throw Exception(
-          decoded['message']?.toString() ?? 'Unable to load users.',
+          'Server returned '
+          '${response.statusCode}',
         );
       }
 
+      final data = jsonDecode(
+        response.body,
+      );
+
       if (!mounted) return;
 
       setState(() {
-        _students = List<dynamic>.from(decoded['students'] ?? []);
-
-        _faculty = List<dynamic>.from(decoded['faculty'] ?? []);
-
-        _administrators = List<dynamic>.from(decoded['administrators'] ?? []);
-
+        _students =
+            data['students'] ?? [];
+        _faculty =
+            data['faculty'] ?? [];
+        _administrators =
+            data['administrators'] ??
+                [];
         _loading = false;
-        _error = null;
       });
     } catch (e) {
-      debugPrint('Admin users error: $e');
-
       if (!mounted) return;
 
       setState(() {
         _loading = false;
-        _error = 'Unable to load user management data.';
+        _error =
+            'Unable to load user management data.';
       });
     }
-  }
-
-  List<dynamic> get _filteredStudents {
-    final query = _studentSearch.trim().toLowerCase();
-
-    if (query.isEmpty) {
-      return _students;
-    }
-
-    return _students.where((student) {
-      final values = [
-        student['student_id'],
-        student['full_name'],
-        student['department'],
-        student['semester'],
-        student['division'],
-        student['email'],
-      ];
-
-      return values.any(
-        (value) => value?.toString().toLowerCase().contains(query) ?? false,
-      );
-    }).toList();
-  }
-
-  List<dynamic> get _filteredFaculty {
-    final query = _facultySearch.trim().toLowerCase();
-
-    if (query.isEmpty) {
-      return _faculty;
-    }
-
-    return _faculty.where((faculty) {
-      final values = [
-        faculty['faculty_id'],
-        faculty['full_name'],
-        faculty['department'],
-        faculty['email'],
-      ];
-
-      return values.any(
-        (value) => value?.toString().toLowerCase().contains(query) ?? false,
-      );
-    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-
       appBar: AppBar(
         title: const Text(
           'User Management',
-          style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
           IconButton(
-            tooltip: 'Refresh',
-            onPressed: _loading ? null : _loadUsers,
-            icon: const Icon(Icons.refresh_rounded),
+            onPressed:
+                _loading
+                    ? null
+                    : _loadUsers,
+            icon: const Icon(
+              Icons.refresh_rounded,
+            ),
           ),
-          const SizedBox(width: 8),
         ],
         bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabs: [
+          controller:
+              _tabController,
+          tabs: const [
             Tab(
-              icon: const Icon(Icons.school_rounded),
-              text: 'Students (${_students.length})',
+              icon: Icon(
+                Icons.school_rounded,
+              ),
+              text: 'Students',
             ),
             Tab(
-              icon: const Icon(Icons.people_rounded),
-              text: 'Faculty (${_faculty.length})',
+              icon: Icon(
+                Icons.people_rounded,
+              ),
+              text: 'Faculty',
             ),
             Tab(
-              icon: const Icon(Icons.admin_panel_settings_rounded),
-              text: 'Admins (${_administrators.length})',
+              icon: Icon(
+                Icons
+                    .admin_panel_settings_rounded,
+              ),
+              text: 'Admins',
             ),
           ],
         ),
       ),
-
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? _AdminErrorView(message: _error!, onRetry: _loadUsers)
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildStudentsTab(),
-                _buildFacultyTab(),
-                _buildAdminTab(),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildStudentsTab() {
-    final students = _filteredStudents;
-
-    return RefreshIndicator(
-      onRefresh: _loadUsers,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-        children: [
-          _buildUserSummaryCard(
-            icon: Icons.school_rounded,
-            title: 'Student Directory',
-            subtitle: 'View registered students across the institution.',
-            count: _students.length,
-          ),
-
-          const SizedBox(height: 14),
-
-          _buildSearchField(
-            hintText: 'Search by USN, name, department, semester...',
-            onChanged: (value) {
-              setState(() {
-                _studentSearch = value;
-              });
-            },
-          ),
-
-          const SizedBox(height: 14),
-
-          if (students.isEmpty)
-            const _AdminEmptyView(message: 'No students match your search.')
-          else
-            _buildStudentTable(students),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFacultyTab() {
-    final faculty = _filteredFaculty;
-
-    return RefreshIndicator(
-      onRefresh: _loadUsers,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-        children: [
-          _buildUserSummaryCard(
-            icon: Icons.people_rounded,
-            title: 'Faculty Directory',
-            subtitle: 'View faculty members and department assignments.',
-            count: _faculty.length,
-          ),
-
-          const SizedBox(height: 14),
-
-          _buildSearchField(
-            hintText: 'Search by faculty ID, name, department...',
-            onChanged: (value) {
-              setState(() {
-                _facultySearch = value;
-              });
-            },
-          ),
-
-          const SizedBox(height: 14),
-
-          if (faculty.isEmpty)
-            const _AdminEmptyView(
-              message: 'No faculty members match your search.',
+          ? const Center(
+              child:
+                  CircularProgressIndicator(),
             )
-          else
-            _buildFacultyTable(faculty),
-        ],
+          : _error != null
+              ? _AdminErrorView(
+                  message: _error!,
+                  onRetry: _loadUsers,
+                )
+              : TabBarView(
+                  controller:
+                      _tabController,
+                  children: [
+                    _buildStudentList(),
+                    _buildFacultyList(),
+                    _buildAdminList(),
+                  ],
+                ),
+    );
+  }
+
+  Widget _buildStudentList() {
+    if (_students.isEmpty) {
+      return const _AdminEmptyView(
+        message:
+            'No students found.',
+      );
+    }
+
+    return _buildTable(
+      columns: const [
+        'Sl. No.',
+        'USN',
+        'Name',
+        'Department',
+        'Semester',
+        'Division',
+      ],
+      rows:
+          List.generate(
+        _students.length,
+        (index) {
+          final student =
+              _students[index];
+
+          return [
+            '${index + 1}',
+            student['student_id']
+                    ?.toString() ??
+                '-',
+            student['full_name']
+                    ?.toString() ??
+                '-',
+            student['department']
+                    ?.toString() ??
+                '-',
+            student['semester']
+                    ?.toString() ??
+                '-',
+            student['division']
+                    ?.toString() ??
+                '-',
+          ];
+        },
       ),
     );
   }
 
-  Widget _buildAdminTab() {
-    return RefreshIndicator(
-      onRefresh: _loadUsers,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-        children: [
-          _buildUserSummaryCard(
-            icon: Icons.admin_panel_settings_rounded,
-            title: 'Administrators',
-            subtitle: 'Administrative accounts currently registered.',
-            count: _administrators.length,
-          ),
+  Widget _buildFacultyList() {
+    if (_faculty.isEmpty) {
+      return const _AdminEmptyView(
+        message:
+            'No faculty found.',
+      );
+    }
 
-          const SizedBox(height: 14),
+    return _buildTable(
+      columns: const [
+        'Sl. No.',
+        'Faculty ID',
+        'Name',
+        'Department',
+        'Email',
+      ],
+      rows:
+          List.generate(
+        _faculty.length,
+        (index) {
+          final faculty =
+              _faculty[index];
 
-          if (_administrators.isEmpty)
-            const _AdminEmptyView(message: 'No administrators found.')
-          else
-            _buildAdminCards(),
-        ],
+          return [
+            '${index + 1}',
+            faculty['faculty_id']
+                    ?.toString() ??
+                '-',
+            faculty['full_name']
+                    ?.toString() ??
+                '-',
+            faculty['department']
+                    ?.toString() ??
+                '-',
+            faculty['email']
+                    ?.toString() ??
+                '-',
+          ];
+        },
       ),
     );
   }
 
-  Widget _buildUserSummaryCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required int count,
+  Widget _buildAdminList() {
+    if (_administrators.isEmpty) {
+      return const _AdminEmptyView(
+        message:
+            'No administrators found.',
+      );
+    }
+
+    return _buildTable(
+      columns: const [
+        'Sl. No.',
+        'User ID',
+        'Username',
+        'Role',
+        'Created',
+      ],
+      rows:
+          List.generate(
+        _administrators.length,
+        (index) {
+          final admin =
+              _administrators[index];
+
+          return [
+            '${index + 1}',
+            admin['id']
+                    ?.toString() ??
+                '-',
+            admin['username']
+                    ?.toString() ??
+                '-',
+            admin['role']
+                    ?.toString() ??
+                '-',
+            admin['created_at']
+                    ?.toString() ??
+                '-',
+          ];
+        },
+      ),
+    );
+  }
+
+  Widget _buildTable({
+    required List<String> columns,
+    required List<List<String>> rows,
   }) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(icon, color: colorScheme.primary, size: 28),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: colorScheme.onSurfaceVariant,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Text(
-                count.toString(),
-                style: TextStyle(
-                  color: colorScheme.primary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchField({
-    required String hintText,
-    required ValueChanged<String> onChanged,
-  }) {
-    return TextField(
-      onChanged: onChanged,
-      decoration: InputDecoration(
-        hintText: hintText,
-        prefixIcon: const Icon(Icons.search_rounded),
-        filled: true,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 15,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStudentTable(List<dynamic> students) {
-    return Card(
-      elevation: 1,
-      clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowHeight: 56,
-          dataRowMinHeight: 58,
-          dataRowMaxHeight: 76,
-          horizontalMargin: 18,
-          columnSpacing: 28,
-          columns: const [
-            DataColumn(label: Text('Sl. No.')),
-            DataColumn(label: Text('USN')),
-            DataColumn(label: Text('Student Name')),
-            DataColumn(label: Text('Department')),
-            DataColumn(label: Text('Sem')),
-            DataColumn(label: Text('Div')),
-            DataColumn(label: Text('Face')),
-            DataColumn(label: Text('Details')),
-          ],
-          rows: students.asMap().entries.map((entry) {
-            final index = entry.key;
-            final student = Map<String, dynamic>.from(entry.value);
-
-            final faceRegistered =
-                student['face_registered'] == 1 ||
-                student['face_registered'] == true;
-
-            return DataRow(
-              cells: [
-                DataCell(Text('${index + 1}')),
-                DataCell(
-                  Text(
-                    student['student_id']?.toString() ?? '-',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                DataCell(Text(student['full_name']?.toString() ?? '-')),
-                DataCell(
-                  SizedBox(
-                    width: 190,
-                    child: Text(
-                      student['department']?.toString() ?? '-',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(Text(student['semester']?.toString() ?? '-')),
-                DataCell(Text(student['division']?.toString() ?? '-')),
-                DataCell(
-                  _statusChip(
-                    faceRegistered ? 'Registered' : 'Not Registered',
-                    faceRegistered,
-                  ),
-                ),
-                DataCell(
-                  IconButton(
-                    tooltip: 'View details',
-                    onPressed: () {
-                      _showStudentDetails(student);
-                    },
-                    icon: const Icon(Icons.visibility_rounded),
-                  ),
-                ),
-              ],
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFacultyTable(List<dynamic> faculty) {
-    return Card(
-      elevation: 1,
-      clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowHeight: 56,
-          dataRowMinHeight: 58,
-          dataRowMaxHeight: 76,
-          horizontalMargin: 18,
-          columnSpacing: 28,
-          columns: const [
-            DataColumn(label: Text('Sl. No.')),
-            DataColumn(label: Text('Faculty ID')),
-            DataColumn(label: Text('Name')),
-            DataColumn(label: Text('Department')),
-            DataColumn(label: Text('Email')),
-            DataColumn(label: Text('Details')),
-          ],
-          rows: faculty.asMap().entries.map((entry) {
-            final index = entry.key;
-            final member = Map<String, dynamic>.from(entry.value);
-
-            return DataRow(
-              cells: [
-                DataCell(Text('${index + 1}')),
-                DataCell(
-                  Text(
-                    member['faculty_id']?.toString() ?? '-',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                DataCell(Text(member['full_name']?.toString() ?? '-')),
-                DataCell(
-                  SizedBox(
-                    width: 200,
-                    child: Text(
-                      member['department']?.toString() ?? '-',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                DataCell(Text(member['email']?.toString() ?? '-')),
-                DataCell(
-                  IconButton(
-                    tooltip: 'View details',
-                    onPressed: () {
-                      _showFacultyDetails(member);
-                    },
-                    icon: const Icon(Icons.visibility_rounded),
-                  ),
-                ),
-              ],
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAdminCards() {
-    return Column(
-      children: _administrators.map<Widget>((item) {
-        final admin = Map<String, dynamic>.from(item);
-
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: 8,
-            ),
-            leading: CircleAvatar(
-              child: const Icon(Icons.admin_panel_settings_rounded),
-            ),
-            title: Text(
-              admin['username']?.toString() ?? '-',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 5),
-              child: Text(
-                'Role: ${admin['role'] ?? '-'}\n'
-                'Created: ${admin['created_at'] ?? '-'}',
-              ),
+    return ListView(
+      padding:
+          const EdgeInsets.all(14),
+      children: [
+        Card(
+          elevation: 1,
+          clipBehavior:
+              Clip.antiAlias,
+          shape:
+              RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(
+              16,
             ),
           ),
-        );
-      }).toList(),
-    );
-  }
+          child: SingleChildScrollView(
+            scrollDirection:
+                Axis.horizontal,
+            child: DataTable(
+              headingRowHeight: 54,
+              dataRowMinHeight: 50,
+              dataRowMaxHeight: 65,
+              horizontalMargin: 16,
+              columnSpacing: 28,
+              columns: columns
+                  .map(
+                    (column) =>
+                        DataColumn(
+                      label:
+                          Text(
+                        column,
+                        style:
+                            const TextStyle(
+                          fontWeight:
+                              FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              rows: rows
+                  .asMap()
+                  .entries
+                  .map(
+                    (entry) {
+                      return DataRow(
+                        color:
+                            WidgetStateProperty
+                                .resolveWith<
+                                    Color?>(
+                          (states) {
+                            if (entry
+                                    .key
+                                    .isEven) {
+                              return Theme.of(
+                                context,
+                              )
+                                  .colorScheme
+                                  .surfaceContainerHighest
+                                  .withValues(
+                                alpha: 0.25,
+                              );
+                            }
 
-  Widget _statusChip(String label, bool positive) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: positive
-            ? colorScheme.primary.withValues(alpha: 0.10)
-            : colorScheme.error.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: positive ? colorScheme.primary : colorScheme.error,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-
-  void _showStudentDetails(Map<String, dynamic> student) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        return _AdminDetailsSheet(
-          title: 'Student Details',
-          icon: Icons.school_rounded,
-          items: [
-            _AdminDetailItem('USN', student['student_id']),
-            _AdminDetailItem('Name', student['full_name']),
-            _AdminDetailItem('Username', student['username']),
-            _AdminDetailItem('Department', student['department']),
-            _AdminDetailItem('Semester', student['semester']),
-            _AdminDetailItem('Division', student['division']),
-            _AdminDetailItem('Email', student['email']),
-            _AdminDetailItem(
-              'Face Registered',
-              student['face_registered'] == 1 ? 'Yes' : 'No',
+                            return null;
+                          },
+                        ),
+                        cells: entry
+                            .value
+                            .map(
+                              (value) =>
+                                  DataCell(
+                                Text(
+                                  value,
+                                  maxLines:
+                                      2,
+                                  overflow:
+                                      TextOverflow
+                                          .ellipsis,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      );
+                    },
+                  )
+                  .toList(),
             ),
-            _AdminDetailItem('Created', student['created_at']),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showFacultyDetails(Map<String, dynamic> faculty) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        return _AdminDetailsSheet(
-          title: 'Faculty Details',
-          icon: Icons.people_rounded,
-          items: [
-            _AdminDetailItem('Faculty ID', faculty['faculty_id']),
-            _AdminDetailItem('Name', faculty['full_name']),
-            _AdminDetailItem('Username', faculty['username']),
-            _AdminDetailItem('Department', faculty['department']),
-            _AdminDetailItem('Email', faculty['email']),
-            _AdminDetailItem('Created', faculty['created_at']),
-          ],
-        );
-      },
+          ),
+        ),
+      ],
     );
   }
 }
+
 
 // ============================================================
 // REPORTS & ANALYTICS
 // ============================================================
 
-class AdminReportsAnalyticsPage extends StatefulWidget {
+class AdminReportsAnalyticsPage
+    extends StatefulWidget {
   final List<CameraDescription> cameras;
 
-  const AdminReportsAnalyticsPage({super.key, required this.cameras});
+  const AdminReportsAnalyticsPage({
+    super.key,
+    required this.cameras,
+  });
 
   @override
-  State<AdminReportsAnalyticsPage> createState() =>
-      _AdminReportsAnalyticsPageState();
+  State<AdminReportsAnalyticsPage>
+      createState() =>
+          _AdminReportsAnalyticsPageState();
 }
 
-class _AdminReportsAnalyticsPageState extends State<AdminReportsAnalyticsPage> {
+class _AdminReportsAnalyticsPageState
+    extends State<AdminReportsAnalyticsPage> {
   bool _loading = true;
   String? _error;
 
-  Map<String, dynamic> _data = {};
+  Map<String, dynamic> _data =
+      {};
 
   @override
   void initState() {
@@ -7347,64 +4494,69 @@ class _AdminReportsAnalyticsPageState extends State<AdminReportsAnalyticsPage> {
   }
 
   Future<void> _loadReports() async {
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
-    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs =
+          await SharedPreferences
+              .getInstance();
 
-      final token = prefs.getString('auth_token');
-
-      if (token == null || token.isEmpty) {
-        throw Exception('Authentication token not found.');
-      }
+      final token =
+          prefs.getString(
+        'auth_token',
+      );
 
       final response = await http.get(
-        Uri.parse('$backendUrl/admin/dashboard'),
+        Uri.parse(
+          '$backendUrl/admin/dashboard',
+        ),
         headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
+          'Authorization':
+              'Bearer $token',
         },
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Server returned ${response.statusCode}');
+        throw Exception();
       }
 
-      final decoded = jsonDecode(response.body);
-
-      if (decoded is! Map) {
-        throw Exception('Invalid analytics response.');
-      }
+      final decoded =
+          Map<String, dynamic>.from(
+        jsonDecode(
+          response.body,
+        ),
+      );
 
       if (!mounted) return;
 
       setState(() {
-        _data = Map<String, dynamic>.from(decoded);
+        _data = decoded;
         _loading = false;
-        _error = null;
       });
     } catch (e) {
-      debugPrint('Admin reports error: $e');
-
       if (!mounted) return;
 
       setState(() {
         _loading = false;
-        _error = 'Unable to load reports and analytics.';
+        _error =
+            'Unable to load reports and analytics.';
       });
     }
   }
 
   int _number(String key) {
-    final overview = _data['overview'];
+    final overview =
+        _data['overview'];
 
     if (overview is Map) {
-      return int.tryParse(overview[key]?.toString() ?? '0') ?? 0;
+      return int.tryParse(
+            overview[key]?.toString() ??
+                '0',
+          ) ??
+          0;
     }
 
     return 0;
@@ -7416,462 +4568,412 @@ class _AdminReportsAnalyticsPageState extends State<AdminReportsAnalyticsPage> {
       appBar: AppBar(
         title: const Text(
           'Reports & Analytics',
-          style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
           IconButton(
-            tooltip: 'Refresh',
-            onPressed: _loading ? null : _loadReports,
-            icon: const Icon(Icons.refresh_rounded),
+            onPressed:
+                _loading
+                    ? null
+                    : _loadReports,
+            icon: const Icon(
+              Icons.refresh_rounded,
+            ),
           ),
-          const SizedBox(width: 8),
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child:
+                  CircularProgressIndicator(),
+            )
           : _error != null
-          ? _AdminErrorView(message: _error!, onRetry: _loadReports)
-          : RefreshIndicator(
-              onRefresh: _loadReports,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-                children: [
-                  _buildHeader(),
+              ? _AdminErrorView(
+                  message: _error!,
+                  onRetry: _loadReports,
+                )
+              : RefreshIndicator(
+                  onRefresh:
+                      _loadReports,
+                  child: ListView(
+                    physics:
+                        const AlwaysScrollableScrollPhysics(),
+                    padding:
+                        const EdgeInsets.all(
+                      16,
+                    ),
+                    children: [
+                      const Text(
+                        'Institutional Summary',
+                        style: TextStyle(
+                          fontSize: 21,
+                          fontWeight:
+                              FontWeight.w800,
+                        ),
+                      ),
 
-                  const SizedBox(height: 18),
+                      const SizedBox(
+                        height: 14,
+                      ),
 
-                  _buildStatsGrid(),
+                      _buildStatsGrid(),
 
-                  const SizedBox(height: 28),
+                      const SizedBox(
+                        height: 26,
+                      ),
 
-                  _buildSectionHeader(
-                    'Department Summary',
-                    'Current academic structure and population.',
+                      const Text(
+                        'Department Summary',
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight:
+                              FontWeight.w800,
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 12,
+                      ),
+
+                      _buildDepartments(),
+
+                      const SizedBox(
+                        height: 26,
+                      ),
+
+                      const Text(
+                        'Recent Attendance Sessions',
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight:
+                              FontWeight.w800,
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 12,
+                      ),
+
+                      _buildRecentSessions(),
+                    ],
                   ),
-
-                  const SizedBox(height: 12),
-
-                  _buildDepartments(),
-
-                  const SizedBox(height: 28),
-
-                  _buildSectionHeader(
-                    'Recent Attendance Sessions',
-                    'Latest sessions recorded by the system.',
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  _buildRecentSessions(),
-                ],
-              ),
-            ),
-    );
-  }
-
-  Widget _buildHeader() {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
-                Icons.analytics_rounded,
-                color: colorScheme.primary,
-                size: 29,
-              ),
-            ),
-            const SizedBox(width: 14),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Institutional Analytics',
-                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    'A consolidated view of departments, users, subjects and attendance activity.',
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title, String subtitle) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          subtitle,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            fontSize: 13,
-          ),
-        ),
-      ],
+                ),
     );
   }
 
   Widget _buildStatsGrid() {
     return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 850
-            ? 3
-            : constraints.maxWidth >= 520
-            ? 2
-            : 1;
+      builder:
+          (context, constraints) {
+        final columns =
+            constraints.maxWidth >= 700
+                ? 3
+                : 2;
 
         final stats = [
           (
             'Departments',
-            _number('total_departments'),
-            Icons.account_balance_rounded,
+            _number(
+              'total_departments',
+            ),
+            Icons
+                .account_balance_rounded,
           ),
-          ('Students', _number('total_students'), Icons.school_rounded),
-          ('Faculty', _number('total_faculty'), Icons.people_rounded),
-          ('Subjects', _number('total_subjects'), Icons.menu_book_rounded),
+          (
+            'Students',
+            _number(
+              'total_students',
+            ),
+            Icons.school_rounded,
+          ),
+          (
+            'Faculty',
+            _number(
+              'total_faculty',
+            ),
+            Icons.people_rounded,
+          ),
+          (
+            'Subjects',
+            _number(
+              'total_subjects',
+            ),
+            Icons.menu_book_rounded,
+          ),
           (
             'Sessions',
-            _number('total_sessions'),
-            Icons.event_available_rounded,
+            _number(
+              'total_sessions',
+            ),
+            Icons
+                .event_available_rounded,
           ),
           (
             'Attendance Records',
-            _number('total_attendance_records'),
+            _number(
+              'total_attendance_records',
+            ),
             Icons.fact_check_rounded,
           ),
         ];
 
-        return GridView.builder(
-          itemCount: stats.length,
+        return GridView.count(
+          crossAxisCount:
+              columns,
           shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            mainAxisExtent: 128,
-          ),
-          itemBuilder: (context, index) {
-            final item = stats[index];
-
-            return _AnalyticsStatCard(
-              title: item.$1,
-              value: item.$2,
-              icon: item.$3,
-            );
-          },
+          physics:
+              const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio:
+              constraints.maxWidth <
+                      400
+                  ? 1.35
+                  : 1.6,
+          children:
+              stats.map(
+            (item) {
+              return Card(
+                child: Padding(
+                  padding:
+                      const EdgeInsets.all(
+                    14,
+                  ),
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment
+                            .start,
+                    children: [
+                      Icon(
+                        item.$3,
+                        color: Theme.of(
+                          context,
+                        )
+                            .colorScheme
+                            .primary,
+                      ),
+                      const Spacer(),
+                      Text(
+                        item.$2.toString(),
+                        style:
+                            const TextStyle(
+                          fontSize: 24,
+                          fontWeight:
+                              FontWeight.w800,
+                        ),
+                      ),
+                      Text(
+                        item.$1,
+                        maxLines: 2,
+                        overflow:
+                            TextOverflow
+                                .ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ).toList(),
         );
       },
     );
   }
 
   Widget _buildDepartments() {
-    // Backend now provides department_overview.
-    // The legacy "departments" field is retained as fallback.
-    final raw = _data['department_overview'] ?? _data['departments'];
+    final departments =
+        _data[
+            'department_overview'];
 
-    if (raw is! List || raw.isEmpty) {
+    if (departments is! List ||
+        departments.isEmpty) {
       return const _AdminEmptyView(
-        message: 'No department analytics available.',
+        message:
+            'No department analytics available.',
       );
     }
 
     return Column(
-      children: raw.map<Widget>((item) {
-        final department = Map<String, dynamic>.from(item);
+      children:
+          departments.map<Widget>(
+        (item) {
+          final department =
+              Map<String, dynamic>.from(
+            item,
+          );
 
-        final students =
-            int.tryParse(
-              (department['total_students'] ?? department['student_count'] ?? 0)
-                  .toString(),
-            ) ??
-            0;
-
-        final faculty =
-            int.tryParse(
-              (department['total_faculty'] ??
-                      department['total_teachers'] ??
-                      department['faculty_count'] ??
-                      0)
-                  .toString(),
-            ) ??
-            0;
-
-        final subjects =
-            int.tryParse(
-              (department['total_subjects'] ?? department['subject_count'] ?? 0)
-                  .toString(),
-            ) ??
-            0;
-
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      child: const Icon(Icons.account_balance_rounded),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            department['department_name']?.toString() ?? '-',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            'Code: ${department['department_code'] ?? '-'}',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final columns = constraints.maxWidth >= 500 ? 3 : 1;
-
-                    if (columns == 1) {
-                      return Column(
-                        children: [
-                          _buildDepartmentMetric(
-                            Icons.school_rounded,
-                            'Students',
-                            students,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildDepartmentMetric(
-                            Icons.people_rounded,
-                            'Faculty',
-                            faculty,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildDepartmentMetric(
-                            Icons.menu_book_rounded,
-                            'Subjects',
-                            subjects,
-                          ),
-                        ],
-                      );
-                    }
-
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: _buildDepartmentMetric(
-                            Icons.school_rounded,
-                            'Students',
-                            students,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _buildDepartmentMetric(
-                            Icons.people_rounded,
-                            'Faculty',
-                            faculty,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _buildDepartmentMetric(
-                            Icons.menu_book_rounded,
-                            'Subjects',
-                            subjects,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ],
+          return Card(
+            margin:
+                const EdgeInsets.only(
+              bottom: 10,
             ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildDepartmentMetric(IconData icon, String label, int value) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 21, color: colorScheme.primary),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value.toString(),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
+            child: ListTile(
+              leading:
+                  const CircleAvatar(
+                child: Icon(
+                  Icons
+                      .account_balance_rounded,
                 ),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+              ),
+              title: Text(
+                department[
+                            'department_name']
+                        ?.toString() ??
+                    '-',
+                style:
+                    const TextStyle(
+                  fontWeight:
+                      FontWeight.w700,
                 ),
-              ],
+              ),
+              subtitle: Text(
+                'Students: '
+                '${department['total_students'] ?? 0}  •  '
+                'Faculty: '
+                '${department['total_faculty'] ?? 0}  •  '
+                'Subjects: '
+                '${department['total_subjects'] ?? 0}',
+              ),
             ),
-          ),
-        ],
-      ),
+          );
+        },
+      ).toList(),
     );
   }
 
   Widget _buildRecentSessions() {
-    final raw = _data['recent_sessions'];
+    final sessions =
+        _data['recent_sessions'];
 
-    if (raw is! List || raw.isEmpty) {
-      return const _AdminEmptyView(message: 'No recent sessions available.');
+    if (sessions is! List ||
+        sessions.isEmpty) {
+      return const _AdminEmptyView(
+        message:
+            'No recent sessions available.',
+      );
     }
 
     return Card(
-      clipBehavior: Clip.antiAlias,
+      clipBehavior:
+          Clip.antiAlias,
       child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
+        scrollDirection:
+            Axis.horizontal,
         child: DataTable(
-          headingRowHeight: 54,
-          dataRowMinHeight: 56,
-          dataRowMaxHeight: 72,
-          columnSpacing: 26,
-          horizontalMargin: 16,
+          headingRowHeight: 52,
+          dataRowMinHeight: 50,
+          dataRowMaxHeight: 62,
+          columnSpacing: 25,
           columns: const [
-            DataColumn(label: Text('Session')),
-            DataColumn(label: Text('Subject')),
-            DataColumn(label: Text('Date')),
-            DataColumn(label: Text('Faculty')),
-            DataColumn(label: Text('Division')),
-            DataColumn(label: Text('Status')),
+            DataColumn(
+              label: Text(
+                'Session',
+              ),
+            ),
+            DataColumn(
+              label: Text(
+                'Subject',
+              ),
+            ),
+            DataColumn(
+              label: Text(
+                'Date',
+              ),
+            ),
+            DataColumn(
+              label: Text(
+                'Faculty',
+              ),
+            ),
+            DataColumn(
+              label: Text(
+                'Status',
+              ),
+            ),
           ],
-          rows: raw.map<DataRow>((item) {
-            final session = Map<String, dynamic>.from(item);
+          rows:
+              sessions.map<DataRow>(
+            (item) {
+              final session =
+                  Map<String, dynamic>.from(
+                item,
+              );
 
-            final status = session['status']?.toString() ?? '-';
-
-            final isActive = status.toLowerCase() == 'active';
-
-            return DataRow(
-              cells: [
-                DataCell(
-                  Text(
-                    '#${session['id'] ?? '-'}',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+              return DataRow(
+                cells: [
+                  DataCell(
+                    Text(
+                      session['id']
+                              ?.toString() ??
+                          '-',
+                    ),
                   ),
-                ),
-                DataCell(Text(session['subject_code']?.toString() ?? '-')),
-                DataCell(Text(session['attendance_date']?.toString() ?? '-')),
-                DataCell(Text(session['faculty_name']?.toString() ?? '-')),
-                DataCell(
-                  Text(
-                    '${session['semester'] ?? '-'} / ${session['division'] ?? '-'}',
+                  DataCell(
+                    Text(
+                      session[
+                                  'subject_code']
+                              ?.toString() ??
+                          '-',
+                    ),
                   ),
-                ),
-                DataCell(_sessionStatusChip(status, isActive)),
-              ],
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _sessionStatusChip(String status, bool active) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: active
-            ? colorScheme.primary.withValues(alpha: 0.10)
-            : colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status.toUpperCase(),
-        style: TextStyle(
-          color: active ? colorScheme.primary : colorScheme.onSurfaceVariant,
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
+                  DataCell(
+                    Text(
+                      session[
+                                  'attendance_date']
+                              ?.toString() ??
+                          '-',
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      session[
+                                  'faculty_name']
+                              ?.toString() ??
+                          '-',
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      session['status']
+                              ?.toString() ??
+                          '-',
+                    ),
+                  ),
+                ],
+              );
+            },
+          ).toList(),
         ),
       ),
     );
   }
 }
+
 
 // ============================================================
 // SECURITY CENTER
 // ============================================================
 
-class AdminSecurityCenterPage extends StatefulWidget {
+class AdminSecurityCenterPage
+    extends StatefulWidget {
   final List<CameraDescription> cameras;
 
-  const AdminSecurityCenterPage({super.key, required this.cameras});
+  const AdminSecurityCenterPage({
+    super.key,
+    required this.cameras,
+  });
 
   @override
-  State<AdminSecurityCenterPage> createState() =>
-      _AdminSecurityCenterPageState();
+  State<AdminSecurityCenterPage>
+      createState() =>
+          _AdminSecurityCenterPageState();
 }
 
-class _AdminSecurityCenterPageState extends State<AdminSecurityCenterPage> {
+class _AdminSecurityCenterPageState
+    extends State<AdminSecurityCenterPage> {
   bool _loading = true;
   String? _error;
 
-  Map<String, dynamic> _securityData = {};
+  dynamic _securityData;
 
   @override
   void initState() {
@@ -7880,27 +4982,28 @@ class _AdminSecurityCenterPageState extends State<AdminSecurityCenterPage> {
   }
 
   Future<void> _loadSecurity() async {
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
-    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs =
+          await SharedPreferences
+              .getInstance();
 
-      final token = prefs.getString('auth_token');
-
-      if (token == null || token.isEmpty) {
-        throw Exception('Authentication token not found.');
-      }
+      final token =
+          prefs.getString(
+        'auth_token',
+      );
 
       final response = await http.get(
-        Uri.parse('$backendUrl/admin/security'),
+        Uri.parse(
+          '$backendUrl/admin/security',
+        ),
         headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
+          'Authorization':
+              'Bearer $token',
         },
       );
 
@@ -7911,577 +5014,321 @@ class _AdminSecurityCenterPageState extends State<AdminSecurityCenterPage> {
         );
       }
 
-      final decoded = jsonDecode(response.body);
-
-      if (decoded is! Map) {
-        throw Exception('Invalid security response.');
-      }
+      final decoded =
+          jsonDecode(response.body);
 
       if (!mounted) return;
 
       setState(() {
-        _securityData = Map<String, dynamic>.from(decoded);
+        _securityData = decoded;
         _loading = false;
-        _error = null;
       });
     } catch (e) {
-      debugPrint('Admin security error: $e');
-
       if (!mounted) return;
 
       setState(() {
         _loading = false;
-        _error = 'Unable to load security information.';
+        _error =
+            'Unable to load security information.';
       });
     }
   }
 
-  int _securityNumber(String key) {
-    dynamic value = _securityData[key];
+  String _formatKey(String key) {
+    return key
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map(
+          (word) {
+            if (word.isEmpty) {
+              return word;
+            }
 
-    // Also support a nested security object if the backend
-    // returns one in a future version.
-    if (value == null && _securityData['security'] is Map) {
-      value = _securityData['security'][key];
+            return word[0].toUpperCase() +
+                word.substring(1);
+          },
+        )
+        .join(' ');
+  }
+
+  Widget _buildSecurityContent() {
+    if (_securityData is Map) {
+      final map =
+          Map<String, dynamic>.from(
+        _securityData,
+      );
+
+      if (map.isEmpty) {
+        return const _AdminEmptyView(
+          message:
+              'No security information is currently available.',
+        );
+      }
+
+      return Column(
+        children: map.entries
+            .map(
+              (entry) {
+                return Card(
+                  margin:
+                      const EdgeInsets.only(
+                    bottom: 10,
+                  ),
+                  child: ListTile(
+                    leading:
+                        const CircleAvatar(
+                      child: Icon(
+                        Icons
+                            .security_rounded,
+                      ),
+                    ),
+                    title: Text(
+                      _formatKey(
+                        entry.key,
+                      ),
+                      style:
+                          const TextStyle(
+                        fontWeight:
+                            FontWeight.w700,
+                      ),
+                    ),
+                    subtitle:
+                        Padding(
+                      padding:
+                          const EdgeInsets.only(
+                        top: 4,
+                      ),
+                      child: Text(
+                        entry.value
+                                ?.toString() ??
+                            'Not available',
+                      ),
+                    ),
+                  ),
+                );
+              },
+            )
+            .toList(),
+      );
     }
 
-    return int.tryParse(value?.toString() ?? '0') ?? 0;
+    if (_securityData is List) {
+      final list =
+          List<dynamic>.from(
+        _securityData,
+      );
+
+      if (list.isEmpty) {
+        return const _AdminEmptyView(
+          message:
+              'No security events are currently available.',
+        );
+      }
+
+      return Column(
+        children:
+            list.map<Widget>(
+          (item) {
+            return Card(
+              margin:
+                  const EdgeInsets.only(
+                bottom: 10,
+              ),
+              child: Padding(
+                padding:
+                    const EdgeInsets.all(
+                  15,
+                ),
+                child: Text(
+                  item.toString(),
+                ),
+              ),
+            );
+          },
+        ).toList(),
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding:
+            const EdgeInsets.all(18),
+        child: Text(
+          _securityData?.toString() ??
+              'No security information available.',
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title:
+            const Text(
           'Security Center',
-          style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
           IconButton(
-            tooltip: 'Refresh',
-            onPressed: _loading ? null : _loadSecurity,
-            icon: const Icon(Icons.refresh_rounded),
+            onPressed:
+                _loading
+                    ? null
+                    : _loadSecurity,
+            icon: const Icon(
+              Icons.refresh_rounded,
+            ),
           ),
-          const SizedBox(width: 8),
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child:
+                  CircularProgressIndicator(),
+            )
           : _error != null
-          ? _AdminErrorView(message: _error!, onRetry: _loadSecurity)
-          : RefreshIndicator(
-              onRefresh: _loadSecurity,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-                children: [
-                  _buildSecurityHeader(),
-
-                  const SizedBox(height: 18),
-
-                  _buildSecurityStats(),
-
-                  const SizedBox(height: 24),
-
-                  _buildSecurityOverview(),
-
-                  const SizedBox(height: 20),
-
-                  _buildSecurityNote(),
-                ],
-              ),
-            ),
-    );
-  }
-
-  Widget _buildSecurityHeader() {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(17),
-              ),
-              child: Icon(
-                Icons.verified_user_rounded,
-                size: 30,
-                color: colorScheme.primary,
-              ),
-            ),
-            const SizedBox(width: 14),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'AntiProxy Security',
-                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    'Security and attendance-verification information reported by the AntiProxy system.',
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSecurityStats() {
-    final total = _securityNumber('total_records');
-
-    final present = _securityNumber('present_records');
-
-    final faceVerified = _securityNumber('face_verified_records');
-
-    final late = _securityNumber('late_records');
-
-    final verificationRate = total > 0 ? (faceVerified / total * 100) : 0.0;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 850
-            ? 4
-            : constraints.maxWidth >= 520
-            ? 2
-            : 1;
-
-        final cards = [
-          _SecurityMetric(
-            title: 'Total Records',
-            value: total,
-            icon: Icons.fact_check_rounded,
-          ),
-          _SecurityMetric(
-            title: 'Face Verified',
-            value: faceVerified,
-            icon: Icons.face_retouching_natural_rounded,
-          ),
-          _SecurityMetric(
-            title: 'Present',
-            value: present,
-            icon: Icons.check_circle_rounded,
-          ),
-          _SecurityMetric(
-            title: 'Late',
-            value: late,
-            icon: Icons.schedule_rounded,
-          ),
-        ];
-
-        return GridView.builder(
-          itemCount: cards.length,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            mainAxisExtent: 126,
-          ),
-          itemBuilder: (context, index) {
-            final metric = cards[index];
-
-            return _SecurityMetricCard(metric: metric);
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildSecurityOverview() {
-    final total = _securityNumber('total_records');
-
-    final faceVerified = _securityNumber('face_verified_records');
-
-    final present = _securityNumber('present_records');
-
-    final late = _securityNumber('late_records');
-
-    final verificationRate = total > 0 ? faceVerified / total : 0.0;
-
-    final attendanceRate = total > 0 ? present / total : 0.0;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Security Overview',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
-
-            const SizedBox(height: 18),
-
-            _buildProgressRow(
-              title: 'Face Verification',
-              value: verificationRate,
-              label: '${(verificationRate * 100).toStringAsFixed(1)}%',
-              icon: Icons.face_retouching_natural_rounded,
-            ),
-
-            const SizedBox(height: 18),
-
-            _buildProgressRow(
-              title: 'Present Attendance',
-              value: attendanceRate,
-              label: '${(attendanceRate * 100).toStringAsFixed(1)}%',
-              icon: Icons.check_circle_outline_rounded,
-            ),
-
-            const SizedBox(height: 18),
-
-            Row(
-              children: [
-                Icon(
-                  Icons.schedule_rounded,
-                  size: 21,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: 9),
-                const Expanded(
-                  child: Text(
-                    'Late Attendance Records',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-                Text(
-                  late.toString(),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProgressRow({
-    required String title,
-    required double value,
-    required String label,
-    required IconData icon,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 21, color: colorScheme.primary),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                color: colorScheme.primary,
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 9),
-
-        ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: LinearProgressIndicator(
-            value: value.clamp(0.0, 1.0),
-            minHeight: 9,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSecurityNote() {
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              Icons.info_outline_rounded,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'These statistics are generated from attendance records currently available to the AntiProxy administration system.',
-                style: TextStyle(
-                  fontSize: 13,
-                  height: 1.4,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================
-// ADMIN UI SUPPORT WIDGETS
-// ============================================================
-
-class _AdminDetailItem {
-  final String label;
-  final dynamic value;
-
-  const _AdminDetailItem(this.label, this.value);
-}
-
-class _AdminDetailsSheet extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final List<_AdminDetailItem> items;
-
-  const _AdminDetailsSheet({
-    required this.title,
-    required this.icon,
-    required this.items,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(radius: 25, child: Icon(icon)),
-                  const SizedBox(width: 13),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
+              ? _AdminErrorView(
+                  message: _error!,
+                  onRetry:
+                      _loadSecurity,
+                )
+              : RefreshIndicator(
+                  onRefresh:
+                      _loadSecurity,
+                  child: ListView(
+                    physics:
+                        const AlwaysScrollableScrollPhysics(),
+                    padding:
+                        const EdgeInsets.all(
+                      16,
                     ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              ...items.map((item) {
-                return Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 9),
-                  padding: const EdgeInsets.all(13),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest.withValues(
-                      alpha: 0.35,
-                    ),
-                    borderRadius: BorderRadius.circular(13),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(
-                        width: 120,
-                        child: Text(
-                          item.label,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: colorScheme.onSurfaceVariant,
+                      Card(
+                        child: Padding(
+                          padding:
+                              const EdgeInsets.all(
+                            18,
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 54,
+                                height: 54,
+                                decoration:
+                                    BoxDecoration(
+                                  borderRadius:
+                                      BorderRadius
+                                          .circular(
+                                    16,
+                                  ),
+                                  color: Theme.of(
+                                    context,
+                                  )
+                                      .colorScheme
+                                      .primary
+                                      .withValues(
+                                    alpha: 0.10,
+                                  ),
+                                ),
+                                child:
+                                    Icon(
+                                  Icons
+                                      .verified_user_rounded,
+                                  size: 29,
+                                  color: Theme.of(
+                                    context,
+                                  )
+                                      .colorScheme
+                                      .primary,
+                                ),
+                              ),
+                              const SizedBox(
+                                width: 14,
+                              ),
+                              const Expanded(
+                                child:
+                                    Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment
+                                          .start,
+                                  children: [
+                                    Text(
+                                      'AntiProxy Security',
+                                      style:
+                                          TextStyle(
+                                        fontSize:
+                                            18,
+                                        fontWeight:
+                                            FontWeight
+                                                .w800,
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      height: 5,
+                                    ),
+                                    Text(
+                                      'Security information reported by the existing AntiProxy system.',
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          item.value?.toString() ?? '-',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+
+                      const SizedBox(
+                        height: 18,
                       ),
+
+                      _buildSecurityContent(),
                     ],
                   ),
-                );
-              }),
-            ],
-          ),
-        ),
-      ),
+                ),
     );
   }
 }
 
-class _AnalyticsStatCard extends StatelessWidget {
-  final String title;
-  final int value;
-  final IconData icon;
-
-  const _AnalyticsStatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Card(
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(15),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: colorScheme.primary, size: 22),
-            ),
-            const Spacer(),
-            Text(
-              value.toString(),
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
-            ),
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SecurityMetric {
-  final String title;
-  final int value;
-  final IconData icon;
-
-  const _SecurityMetric({
-    required this.title,
-    required this.value,
-    required this.icon,
-  });
-}
-
-class _SecurityMetricCard extends StatelessWidget {
-  final _SecurityMetric metric;
-
-  const _SecurityMetricCard({required this.metric});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Card(
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(15),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(metric.icon, color: colorScheme.primary, size: 22),
-            ),
-            const Spacer(),
-            Text(
-              metric.value.toString(),
-              style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
-            ),
-            Text(
-              metric.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 // ============================================================
 // EMPTY STATE
 // ============================================================
 
-class _AdminEmptyView extends StatelessWidget {
+class _AdminEmptyView
+    extends StatelessWidget {
   final String message;
 
-  const _AdminEmptyView({required this.message});
+  const _AdminEmptyView({
+    required this.message,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(28),
+        padding:
+            const EdgeInsets.all(28),
         child: Column(
           children: [
             Icon(
-              Icons.inbox_outlined,
+              Icons
+                  .inbox_outlined,
               size: 48,
-              color: Theme.of(context).colorScheme.primary,
+              color: Theme.of(context)
+                  .colorScheme
+                  .primary,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(
+              height: 12,
+            ),
             Text(
               message,
-              textAlign: TextAlign.center,
+              textAlign:
+                  TextAlign.center,
               style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurfaceVariant,
               ),
             ),
           ],
@@ -8490,6 +5337,7 @@ class _AdminEmptyView extends StatelessWidget {
     );
   }
 }
+
 
 // ============================================================
 // ADMIN DEPARTMENTS PAGE
@@ -8498,13 +5346,18 @@ class _AdminEmptyView extends StatelessWidget {
 class AdminDepartmentsPage extends StatefulWidget {
   final List<CameraDescription> cameras;
 
-  const AdminDepartmentsPage({super.key, required this.cameras});
+  const AdminDepartmentsPage({
+    super.key,
+    required this.cameras,
+  });
 
   @override
-  State<AdminDepartmentsPage> createState() => _AdminDepartmentsPageState();
+  State<AdminDepartmentsPage> createState() =>
+      _AdminDepartmentsPageState();
 }
 
-class _AdminDepartmentsPageState extends State<AdminDepartmentsPage> {
+class _AdminDepartmentsPageState
+    extends State<AdminDepartmentsPage> {
   bool _loading = true;
   String? _error;
   List<dynamic> _departments = [];
@@ -8522,17 +5375,24 @@ class _AdminDepartmentsPageState extends State<AdminDepartmentsPage> {
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs =
+          await SharedPreferences.getInstance();
 
       final token = prefs.getString('auth_token');
 
       final response = await http.get(
-        Uri.parse('$backendUrl/admin/departments/details'),
-        headers: {'Authorization': 'Bearer $token'},
+        Uri.parse(
+          '$backendUrl/admin/departments/details',
+        ),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Server returned ${response.statusCode}');
+        throw Exception(
+          'Server returned ${response.statusCode}',
+        );
       }
 
       final data = jsonDecode(response.body);
@@ -8556,72 +5416,124 @@ class _AdminDepartmentsPageState extends State<AdminDepartmentsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Departments')),
+      appBar: AppBar(
+        title: const Text('Departments'),
+      ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
           : _error != null
-          ? _ErrorView(message: _error!, onRetry: _loadDepartments)
-          : _departments.isEmpty
-          ? const _EmptyView(message: 'No departments found.')
-          : RefreshIndicator(
-              onRefresh: _loadDepartments,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  const Text(
-                    'Department Information',
-                    style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
+              ? _ErrorView(
+                  message: _error!,
+                  onRetry: _loadDepartments,
+                )
+              : _departments.isEmpty
+                  ? const _EmptyView(
+                      message:
+                          'No departments found.',
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _loadDepartments,
+                      child: ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: [
+                          const Text(
+                            'Department Information',
+                            style: TextStyle(
+                              fontSize: 21,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
 
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columns: const [
-                        DataColumn(label: Text('Sl. No.')),
-                        DataColumn(label: Text('Department ID')),
-                        DataColumn(label: Text('Department Name')),
-                        DataColumn(label: Text('Teachers')),
-                        DataColumn(label: Text('Students')),
-                      ],
-                      rows: List.generate(_departments.length, (index) {
-                        final department = _departments[index];
+                          SingleChildScrollView(
+                            scrollDirection:
+                                Axis.horizontal,
+                            child: DataTable(
+                              columns: const [
+                                DataColumn(
+                                  label: Text('Sl. No.'),
+                                ),
+                                DataColumn(
+                                  label: Text(
+                                    'Department ID',
+                                  ),
+                                ),
+                                DataColumn(
+                                  label: Text(
+                                    'Department Name',
+                                  ),
+                                ),
+                                DataColumn(
+                                  label: Text(
+                                    'Teachers',
+                                  ),
+                                ),
+                                DataColumn(
+                                  label: Text(
+                                    'Students',
+                                  ),
+                                ),
+                              ],
+                              rows: List.generate(
+                                _departments.length,
+                                (index) {
+                                  final department =
+                                      _departments[index];
 
-                        return DataRow(
-                          cells: [
-                            DataCell(Text('${index + 1}')),
-                            DataCell(
-                              Text(
-                                department['department_id']?.toString() ?? '-',
+                                  return DataRow(
+                                    cells: [
+                                      DataCell(
+                                        Text(
+                                          '${index + 1}',
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Text(
+                                          department[
+                                                  'department_id']
+                                              ?.toString() ??
+                                              '-',
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Text(
+                                          department[
+                                                  'department_name']
+                                              ?.toString() ??
+                                              '-',
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Text(
+                                          department[
+                                                  'total_teachers']
+                                              ?.toString() ??
+                                              '0',
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Text(
+                                          department[
+                                                  'total_students']
+                                              ?.toString() ??
+                                              '0',
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
                               ),
                             ),
-                            DataCell(
-                              Text(
-                                department['department_name']?.toString() ??
-                                    '-',
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                department['total_teachers']?.toString() ?? '0',
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                department['total_students']?.toString() ?? '0',
-                              ),
-                            ),
-                          ],
-                        );
-                      }),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
     );
   }
 }
+
 
 // ============================================================
 // ADMIN STUDENTS PAGE
@@ -8630,13 +5542,18 @@ class _AdminDepartmentsPageState extends State<AdminDepartmentsPage> {
 class AdminStudentsPage extends StatefulWidget {
   final List<CameraDescription> cameras;
 
-  const AdminStudentsPage({super.key, required this.cameras});
+  const AdminStudentsPage({
+    super.key,
+    required this.cameras,
+  });
 
   @override
-  State<AdminStudentsPage> createState() => _AdminStudentsPageState();
+  State<AdminStudentsPage> createState() =>
+      _AdminStudentsPageState();
 }
 
-class _AdminStudentsPageState extends State<AdminStudentsPage> {
+class _AdminStudentsPageState
+    extends State<AdminStudentsPage> {
   bool _loadingDepartments = true;
 
   List<dynamic> _departments = [];
@@ -8660,7 +5577,8 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
   }
 
   Future<String?> _token() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs =
+        await SharedPreferences.getInstance();
 
     return prefs.getString('auth_token');
   }
@@ -8670,8 +5588,12 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
       final token = await _token();
 
       final response = await http.get(
-        Uri.parse('$backendUrl/admin/students/departments'),
-        headers: {'Authorization': 'Bearer $token'},
+        Uri.parse(
+          '$backendUrl/admin/students/departments',
+        ),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -8696,7 +5618,9 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
     }
   }
 
-  Future<void> _loadGroups(String department) async {
+  Future<void> _loadGroups(
+    String department,
+  ) async {
     setState(() {
       _selectedDepartment = department;
       _selectedSemester = null;
@@ -8712,11 +5636,17 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
 
       final uri = Uri.parse(
         '$backendUrl/admin/students/groups',
-      ).replace(queryParameters: {'department': department});
+      ).replace(
+        queryParameters: {
+          'department': department,
+        },
+      );
 
       final response = await http.get(
         uri,
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -8757,17 +5687,22 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
     try {
       final token = await _token();
 
-      final uri = Uri.parse('$backendUrl/admin/students/list').replace(
+      final uri = Uri.parse(
+        '$backendUrl/admin/students/list',
+      ).replace(
         queryParameters: {
           'department': _selectedDepartment!,
-          'semester': _selectedSemester!.toString(),
+          'semester':
+              _selectedSemester!.toString(),
           'division': _selectedDivision!,
         },
       );
 
       final response = await http.get(
         uri,
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -8792,13 +5727,19 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
     }
   }
 
-  Future<void> _showStudentDetails(int studentId) async {
+  Future<void> _showStudentDetails(
+    int studentId,
+  ) async {
     try {
       final token = await _token();
 
       final response = await http.get(
-        Uri.parse('$backendUrl/admin/students/$studentId'),
-        headers: {'Authorization': 'Bearer $token'},
+        Uri.parse(
+          '$backendUrl/admin/students/$studentId',
+        ),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -8809,29 +5750,52 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
 
       if (!mounted) return;
 
-      final student = Map<String, dynamic>.from(data['student'] ?? {});
+      final student =
+          Map<String, dynamic>.from(
+        data['student'] ?? {},
+      );
 
       await showDialog(
         context: context,
         builder: (_) {
-          return _AdminDetailsDialog(title: 'Student Details', data: student);
+          return _AdminDetailsDialog(
+            title: 'Student Details',
+            data: student,
+          );
         },
       );
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to load student details.')),
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
+        const SnackBar(
+          content:
+              Text('Failed to load student details.'),
+        ),
       );
     }
   }
 
   String _semesterRoman(dynamic value) {
-    final semester = int.tryParse(value.toString());
+    final semester =
+        int.tryParse(value.toString());
 
-    const roman = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+    const roman = [
+      '',
+      'I',
+      'II',
+      'III',
+      'IV',
+      'V',
+      'VI',
+      'VII',
+      'VIII',
+    ];
 
-    if (semester != null && semester > 0 && semester < roman.length) {
+    if (semester != null &&
+        semester > 0 &&
+        semester < roman.length) {
       return roman[semester];
     }
 
@@ -8841,110 +5805,161 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Student Management')),
+      appBar: AppBar(
+        title: const Text('Student Management'),
+      ),
       body: _loadingDepartments
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null && _departments.isEmpty
-          ? _ErrorView(message: _error!, onRetry: _loadDepartments)
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                const Text(
-                  'Select Department',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : _error != null &&
+                  _departments.isEmpty
+              ? _ErrorView(
+                  message: _error!,
+                  onRetry: _loadDepartments,
+                )
+              : ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    const Text(
+                      'Select Department',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
 
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedDepartment,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Department',
-                  ),
-                  items: _departments.map<DropdownMenuItem<String>>((
-                    department,
-                  ) {
-                    final name = department['department']?.toString() ?? '';
+                    DropdownButtonFormField<String>(
+                      initialValue:
+                          _selectedDepartment,
+                      decoration:
+                          const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Department',
+                      ),
+                      items: _departments
+                          .map<DropdownMenuItem<String>>(
+                        (department) {
+                          final name =
+                              department['department']
+                                  ?.toString() ??
+                                  '';
 
-                    return DropdownMenuItem(value: name, child: Text(name));
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      _loadGroups(value);
-                    }
-                  },
-                ),
-
-                const SizedBox(height: 24),
-
-                if (_loadingGroups)
-                  const Center(child: CircularProgressIndicator()),
-
-                if (!_loadingGroups && _groups.isNotEmpty) ...[
-                  const Text(
-                    'Semester - Division',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: _groups.map<Widget>((group) {
-                      final semester =
-                          int.tryParse(group['semester'].toString()) ?? 0;
-
-                      final division = group['division']?.toString() ?? '';
-
-                      final selected =
-                          _selectedSemester == semester &&
-                          _selectedDivision == division;
-
-                      return ChoiceChip(
-                        selected: selected,
-                        label: Text(
-                          'Sem : '
-                          '${_semesterRoman(semester)}  '
-                          'Division : $division',
-                        ),
-                        onSelected: (_) {
-                          setState(() {
-                            _selectedSemester = semester;
-                            _selectedDivision = division;
-                          });
-
-                          _loadStudents();
+                          return DropdownMenuItem(
+                            value: name,
+                            child: Text(name),
+                          );
                         },
-                      );
-                    }).toList(),
-                  ),
-                ],
+                      ).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          _loadGroups(value);
+                        }
+                      },
+                    ),
 
-                const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-                if (_loadingStudents)
-                  const Center(child: CircularProgressIndicator()),
+                    if (_loadingGroups)
+                      const Center(
+                        child:
+                            CircularProgressIndicator(),
+                      ),
 
-                if (!_loadingStudents && _selectedDivision != null)
-                  _buildStudentTable(),
-              ],
-            ),
+                    if (!_loadingGroups &&
+                        _groups.isNotEmpty) ...[
+                      const Text(
+                        'Semester - Division',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children:
+                            _groups.map<Widget>(
+                          (group) {
+                            final semester =
+                                int.tryParse(
+                                      group[
+                                              'semester']
+                                          .toString(),
+                                    ) ??
+                                    0;
+
+                            final division =
+                                group['division']
+                                        ?.toString() ??
+                                    '';
+
+                            final selected =
+                                _selectedSemester ==
+                                        semester &&
+                                    _selectedDivision ==
+                                        division;
+
+                            return ChoiceChip(
+                              selected: selected,
+                              label: Text(
+                                'Sem : '
+                                '${_semesterRoman(semester)}  '
+                                'Division : $division',
+                              ),
+                              onSelected: (_) {
+                                setState(() {
+                                  _selectedSemester =
+                                      semester;
+                                  _selectedDivision =
+                                      division;
+                                });
+
+                                _loadStudents();
+                              },
+                            );
+                          },
+                        ).toList(),
+                      ),
+                    ],
+
+                    const SizedBox(height: 24),
+
+                    if (_loadingStudents)
+                      const Center(
+                        child:
+                            CircularProgressIndicator(),
+                      ),
+
+                    if (!_loadingStudents &&
+                        _selectedDivision != null)
+                      _buildStudentTable(),
+                  ],
+                ),
     );
   }
 
   Widget _buildStudentTable() {
     if (_students.isEmpty) {
       return const _EmptyView(
-        message: 'No students found for the selected group.',
+        message:
+            'No students found for the selected group.',
       );
     }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
       children: [
         const Text(
           'Students',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 10),
 
@@ -8952,42 +5967,80 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
           scrollDirection: Axis.horizontal,
           child: DataTable(
             columns: const [
-              DataColumn(label: Text('Sl. No.')),
-              DataColumn(label: Text('USN')),
-              DataColumn(label: Text('Name')),
-              DataColumn(label: Text('Details')),
+              DataColumn(
+                label: Text('Sl. No.'),
+              ),
+              DataColumn(
+                label: Text('USN'),
+              ),
+              DataColumn(
+                label: Text('Name'),
+              ),
+              DataColumn(
+                label: Text('Details'),
+              ),
             ],
-            rows: List.generate(_students.length, (index) {
-              final student = _students[index];
+            rows: List.generate(
+              _students.length,
+              (index) {
+                final student =
+                    _students[index];
 
-              final id = int.tryParse(student['id'].toString());
+                final id =
+                    int.tryParse(
+                      student['id'].toString(),
+                    );
 
-              return DataRow(
-                cells: [
-                  DataCell(Text('${index + 1}')),
-                  DataCell(Text(student['student_id']?.toString() ?? '-')),
-                  DataCell(Text(student['full_name']?.toString() ?? '-')),
-                  DataCell(
-                    InkWell(
-                      onTap: id == null ? null : () => _showStudentDetails(id),
-                      child: const Text(
-                        'Details',
-                        style: TextStyle(
-                          decoration: TextDecoration.underline,
-                          fontWeight: FontWeight.bold,
+                return DataRow(
+                  cells: [
+                    DataCell(
+                      Text('${index + 1}'),
+                    ),
+                    DataCell(
+                      Text(
+                        student['student_id']
+                                ?.toString() ??
+                            '-',
+                      ),
+                    ),
+                    DataCell(
+                      Text(
+                        student['full_name']
+                                ?.toString() ??
+                            '-',
+                      ),
+                    ),
+                    DataCell(
+                      InkWell(
+                        onTap: id == null
+                            ? null
+                            : () =>
+                                _showStudentDetails(
+                                  id,
+                                ),
+                        child: const Text(
+                          'Details',
+                          style: TextStyle(
+                            decoration:
+                                TextDecoration
+                                    .underline,
+                            fontWeight:
+                                FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              );
-            }),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ],
     );
   }
 }
+
 
 // ============================================================
 // ADMIN FACULTY PAGE
@@ -8996,13 +6049,18 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
 class AdminFacultyPage extends StatefulWidget {
   final List<CameraDescription> cameras;
 
-  const AdminFacultyPage({super.key, required this.cameras});
+  const AdminFacultyPage({
+    super.key,
+    required this.cameras,
+  });
 
   @override
-  State<AdminFacultyPage> createState() => _AdminFacultyPageState();
+  State<AdminFacultyPage> createState() =>
+      _AdminFacultyPageState();
 }
 
-class _AdminFacultyPageState extends State<AdminFacultyPage> {
+class _AdminFacultyPageState
+    extends State<AdminFacultyPage> {
   bool _loading = true;
   bool _loadingFaculty = false;
 
@@ -9020,7 +6078,8 @@ class _AdminFacultyPageState extends State<AdminFacultyPage> {
   }
 
   Future<String?> _token() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs =
+        await SharedPreferences.getInstance();
 
     return prefs.getString('auth_token');
   }
@@ -9030,8 +6089,12 @@ class _AdminFacultyPageState extends State<AdminFacultyPage> {
       final token = await _token();
 
       final response = await http.get(
-        Uri.parse('$backendUrl/admin/faculty/departments'),
-        headers: {'Authorization': 'Bearer $token'},
+        Uri.parse(
+          '$backendUrl/admin/faculty/departments',
+        ),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -9056,7 +6119,9 @@ class _AdminFacultyPageState extends State<AdminFacultyPage> {
     }
   }
 
-  Future<void> _loadFaculty(String department) async {
+  Future<void> _loadFaculty(
+    String department,
+  ) async {
     setState(() {
       _selectedDepartment = department;
       _loadingFaculty = true;
@@ -9068,11 +6133,17 @@ class _AdminFacultyPageState extends State<AdminFacultyPage> {
 
       final uri = Uri.parse(
         '$backendUrl/admin/faculty/list',
-      ).replace(queryParameters: {'department': department});
+      ).replace(
+        queryParameters: {
+          'department': department,
+        },
+      );
 
       final response = await http.get(
         uri,
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -9097,13 +6168,19 @@ class _AdminFacultyPageState extends State<AdminFacultyPage> {
     }
   }
 
-  Future<void> _showFacultyDetails(int facultyId) async {
+  Future<void> _showFacultyDetails(
+    int facultyId,
+  ) async {
     try {
       final token = await _token();
 
       final response = await http.get(
-        Uri.parse('$backendUrl/admin/faculty/$facultyId'),
-        headers: {'Authorization': 'Bearer $token'},
+        Uri.parse(
+          '$backendUrl/admin/faculty/$facultyId',
+        ),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -9114,19 +6191,29 @@ class _AdminFacultyPageState extends State<AdminFacultyPage> {
 
       if (!mounted) return;
 
-      final faculty = Map<String, dynamic>.from(data['faculty'] ?? {});
+      final faculty =
+          Map<String, dynamic>.from(
+        data['faculty'] ?? {},
+      );
 
       await showDialog(
         context: context,
         builder: (_) {
-          return _AdminDetailsDialog(title: 'Faculty Details', data: faculty);
+          return _AdminDetailsDialog(
+            title: 'Faculty Details',
+            data: faculty,
+          );
         },
       );
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to load faculty details.')),
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
+        const SnackBar(
+          content:
+              Text('Failed to load faculty details.'),
+        ),
       );
     }
   }
@@ -9134,97 +6221,171 @@ class _AdminFacultyPageState extends State<AdminFacultyPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Faculty Management')),
+      appBar: AppBar(
+        title: const Text('Faculty Management'),
+      ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null && _departments.isEmpty
-          ? _ErrorView(message: _error!, onRetry: _loadDepartments)
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                const Text(
-                  'Select Department',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : _error != null &&
+                  _departments.isEmpty
+              ? _ErrorView(
+                  message: _error!,
+                  onRetry: _loadDepartments,
+                )
+              : ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    const Text(
+                      'Select Department',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    DropdownButtonFormField<String>(
+                      initialValue:
+                          _selectedDepartment,
+                      decoration:
+                          const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Department',
+                      ),
+                      items: _departments
+                          .map<DropdownMenuItem<String>>(
+                        (department) {
+                          final name =
+                              department['department']
+                                  ?.toString() ??
+                                  '';
+
+                          return DropdownMenuItem(
+                            value: name,
+                            child: Text(name),
+                          );
+                        },
+                      ).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          _loadFaculty(value);
+                        }
+                      },
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    if (_loadingFaculty)
+                      const Center(
+                        child:
+                            CircularProgressIndicator(),
+                      ),
+
+                    if (!_loadingFaculty &&
+                        _selectedDepartment !=
+                            null)
+                      _buildFacultyTable(),
+                  ],
                 ),
-                const SizedBox(height: 10),
-
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedDepartment,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Department',
-                  ),
-                  items: _departments.map<DropdownMenuItem<String>>((
-                    department,
-                  ) {
-                    final name = department['department']?.toString() ?? '';
-
-                    return DropdownMenuItem(value: name, child: Text(name));
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      _loadFaculty(value);
-                    }
-                  },
-                ),
-
-                const SizedBox(height: 24),
-
-                if (_loadingFaculty)
-                  const Center(child: CircularProgressIndicator()),
-
-                if (!_loadingFaculty && _selectedDepartment != null)
-                  _buildFacultyTable(),
-              ],
-            ),
     );
   }
 
   Widget _buildFacultyTable() {
     if (_faculty.isEmpty) {
-      return const _EmptyView(message: 'No faculty members found.');
+      return const _EmptyView(
+        message:
+            'No faculty members found.',
+      );
     }
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
         columns: const [
-          DataColumn(label: Text('Sl. No.')),
-          DataColumn(label: Text('Faculty ID')),
-          DataColumn(label: Text('Name')),
-          DataColumn(label: Text('Email')),
-          DataColumn(label: Text('Details')),
+          DataColumn(
+            label: Text('Sl. No.'),
+          ),
+          DataColumn(
+            label: Text('Faculty ID'),
+          ),
+          DataColumn(
+            label: Text('Name'),
+          ),
+          DataColumn(
+            label: Text('Email'),
+          ),
+          DataColumn(
+            label: Text('Details'),
+          ),
         ],
-        rows: List.generate(_faculty.length, (index) {
-          final faculty = _faculty[index];
+        rows: List.generate(
+          _faculty.length,
+          (index) {
+            final faculty =
+                _faculty[index];
 
-          final id = int.tryParse(faculty['id'].toString());
+            final id =
+                int.tryParse(
+                  faculty['id'].toString(),
+                );
 
-          return DataRow(
-            cells: [
-              DataCell(Text('${index + 1}')),
-              DataCell(Text(faculty['faculty_id']?.toString() ?? '-')),
-              DataCell(Text(faculty['full_name']?.toString() ?? '-')),
-              DataCell(Text(faculty['email']?.toString() ?? '-')),
-              DataCell(
-                InkWell(
-                  onTap: id == null ? null : () => _showFacultyDetails(id),
-                  child: const Text(
-                    'Details',
-                    style: TextStyle(
-                      decoration: TextDecoration.underline,
-                      fontWeight: FontWeight.bold,
+            return DataRow(
+              cells: [
+                DataCell(
+                  Text('${index + 1}'),
+                ),
+                DataCell(
+                  Text(
+                    faculty['faculty_id']
+                            ?.toString() ??
+                        '-',
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    faculty['full_name']
+                            ?.toString() ??
+                        '-',
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    faculty['email']
+                            ?.toString() ??
+                        '-',
+                  ),
+                ),
+                DataCell(
+                  InkWell(
+                    onTap: id == null
+                        ? null
+                        : () =>
+                            _showFacultyDetails(
+                              id,
+                            ),
+                    child: const Text(
+                      'Details',
+                      style: TextStyle(
+                        decoration:
+                            TextDecoration
+                                .underline,
+                        fontWeight:
+                            FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          );
-        }),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 }
+
 
 // ============================================================
 // ADMIN SUBJECTS PAGE
@@ -9233,13 +6394,18 @@ class _AdminFacultyPageState extends State<AdminFacultyPage> {
 class AdminSubjectsPage extends StatefulWidget {
   final List<CameraDescription> cameras;
 
-  const AdminSubjectsPage({super.key, required this.cameras});
+  const AdminSubjectsPage({
+    super.key,
+    required this.cameras,
+  });
 
   @override
-  State<AdminSubjectsPage> createState() => _AdminSubjectsPageState();
+  State<AdminSubjectsPage> createState() =>
+      _AdminSubjectsPageState();
 }
 
-class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
+class _AdminSubjectsPageState
+    extends State<AdminSubjectsPage> {
   bool _loadingDepartments = true;
   bool _loadingGroups = false;
   bool _loadingSubjects = false;
@@ -9261,7 +6427,8 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
   }
 
   Future<String?> _token() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs =
+        await SharedPreferences.getInstance();
 
     return prefs.getString('auth_token');
   }
@@ -9271,8 +6438,12 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
       final token = await _token();
 
       final response = await http.get(
-        Uri.parse('$backendUrl/admin/subjects/departments'),
-        headers: {'Authorization': 'Bearer $token'},
+        Uri.parse(
+          '$backendUrl/admin/subjects/departments',
+        ),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -9297,9 +6468,12 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
     }
   }
 
-  Future<void> _loadGroups(int departmentId) async {
+  Future<void> _loadGroups(
+    int departmentId,
+  ) async {
     setState(() {
-      _selectedDepartmentId = departmentId;
+      _selectedDepartmentId =
+          departmentId;
       _selectedSemester = null;
       _selectedDivision = null;
       _groups = [];
@@ -9312,11 +6486,18 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
 
       final uri = Uri.parse(
         '$backendUrl/admin/subjects/groups',
-      ).replace(queryParameters: {'department_id': departmentId.toString()});
+      ).replace(
+        queryParameters: {
+          'department_id':
+              departmentId.toString(),
+        },
+      );
 
       final response = await http.get(
         uri,
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -9356,17 +6537,24 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
     try {
       final token = await _token();
 
-      final uri = Uri.parse('$backendUrl/admin/subjects/list').replace(
+      final uri = Uri.parse(
+        '$backendUrl/admin/subjects/list',
+      ).replace(
         queryParameters: {
-          'department_id': _selectedDepartmentId!.toString(),
-          'semester': _selectedSemester!.toString(),
-          'division': _selectedDivision!,
+          'department_id':
+              _selectedDepartmentId!.toString(),
+          'semester':
+              _selectedSemester!.toString(),
+          'division':
+              _selectedDivision!,
         },
       );
 
       final response = await http.get(
         uri,
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -9392,11 +6580,24 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
   }
 
   String _semesterRoman(dynamic value) {
-    final semester = int.tryParse(value.toString());
+    final semester =
+        int.tryParse(value.toString());
 
-    const roman = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+    const roman = [
+      '',
+      'I',
+      'II',
+      'III',
+      'IV',
+      'V',
+      'VI',
+      'VII',
+      'VIII',
+    ];
 
-    if (semester != null && semester > 0 && semester < roman.length) {
+    if (semester != null &&
+        semester > 0 &&
+        semester < roman.length) {
       return roman[semester];
     }
 
@@ -9406,36 +6607,54 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Subject Management')),
+      appBar: AppBar(
+        title: const Text('Subject Management'),
+      ),
       body: _loadingDepartments
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 const Text(
                   'Select Department',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 10),
 
                 DropdownButtonFormField<int>(
-                  initialValue: _selectedDepartmentId,
-                  decoration: const InputDecoration(
+                  initialValue:
+                      _selectedDepartmentId,
+                  decoration:
+                      const InputDecoration(
                     border: OutlineInputBorder(),
                     labelText: 'Department',
                   ),
-                  items: _departments.map<DropdownMenuItem<int>>((department) {
-                    final id = int.tryParse(
-                      department['department_id'].toString(),
-                    );
+                  items: _departments
+                      .map<DropdownMenuItem<int>>(
+                    (department) {
+                      final id =
+                          int.tryParse(
+                        department[
+                                'department_id']
+                            .toString(),
+                      );
 
-                    return DropdownMenuItem(
-                      value: id,
-                      child: Text(
-                        department['department_name']?.toString() ?? '-',
-                      ),
-                    );
-                  }).toList(),
+                      return DropdownMenuItem(
+                        value: id,
+                        child: Text(
+                          department[
+                                  'department_name']
+                              ?.toString() ??
+                              '-',
+                        ),
+                      );
+                    },
+                  ).toList(),
                   onChanged: (value) {
                     if (value != null) {
                       _loadGroups(value);
@@ -9446,52 +6665,77 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
                 const SizedBox(height: 24),
 
                 if (_loadingGroups)
-                  const Center(child: CircularProgressIndicator()),
+                  const Center(
+                    child:
+                        CircularProgressIndicator(),
+                  ),
 
-                if (!_loadingGroups && _groups.isNotEmpty) ...[
+                if (!_loadingGroups &&
+                    _groups.isNotEmpty) ...[
                   const Text(
                     'Semester - Division',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 10),
 
                   Wrap(
                     spacing: 10,
                     runSpacing: 10,
-                    children: _groups.map<Widget>((group) {
-                      final semester =
-                          int.tryParse(group['semester'].toString()) ?? 0;
+                    children:
+                        _groups.map<Widget>(
+                      (group) {
+                        final semester =
+                            int.tryParse(
+                                  group['semester']
+                                      .toString(),
+                                ) ??
+                                0;
 
-                      final division = group['division']?.toString() ?? '';
+                        final division =
+                            group['division']
+                                    ?.toString() ??
+                                '';
 
-                      return ChoiceChip(
-                        selected:
-                            _selectedSemester == semester &&
-                            _selectedDivision == division,
-                        label: Text(
-                          'Sem : '
-                          '${_semesterRoman(semester)}  '
-                          'Division : $division',
-                        ),
-                        onSelected: (_) {
-                          setState(() {
-                            _selectedSemester = semester;
-                            _selectedDivision = division;
-                          });
+                        return ChoiceChip(
+                          selected:
+                              _selectedSemester ==
+                                      semester &&
+                                  _selectedDivision ==
+                                      division,
+                          label: Text(
+                            'Sem : '
+                            '${_semesterRoman(semester)}  '
+                            'Division : $division',
+                          ),
+                          onSelected: (_) {
+                            setState(() {
+                              _selectedSemester =
+                                  semester;
+                              _selectedDivision =
+                                  division;
+                            });
 
-                          _loadSubjects();
-                        },
-                      );
-                    }).toList(),
+                            _loadSubjects();
+                          },
+                        );
+                      },
+                    ).toList(),
                   ),
                 ],
 
                 const SizedBox(height: 24),
 
                 if (_loadingSubjects)
-                  const Center(child: CircularProgressIndicator()),
+                  const Center(
+                    child:
+                        CircularProgressIndicator(),
+                  ),
 
-                if (!_loadingSubjects && _selectedDivision != null)
+                if (!_loadingSubjects &&
+                    _selectedDivision != null)
                   _buildSubjectTable(),
               ],
             ),
@@ -9501,7 +6745,8 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
   Widget _buildSubjectTable() {
     if (_subjects.isEmpty) {
       return const _EmptyView(
-        message: 'No subjects found for the selected group.',
+        message:
+            'No subjects found for the selected group.',
       );
     }
 
@@ -9509,38 +6754,73 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
       scrollDirection: Axis.horizontal,
       child: DataTable(
         columns: const [
-          DataColumn(label: Text('Sl. No.')),
-          DataColumn(label: Text('Subject Code')),
-          DataColumn(label: Text('Subject Name')),
-          DataColumn(label: Text('Faculty Handling')),
+          DataColumn(
+            label: Text('Sl. No.'),
+          ),
+          DataColumn(
+            label: Text('Subject Code'),
+          ),
+          DataColumn(
+            label: Text('Subject Name'),
+          ),
+          DataColumn(
+            label: Text('Faculty Handling'),
+          ),
         ],
-        rows: List.generate(_subjects.length, (index) {
-          final subject = _subjects[index];
+        rows: List.generate(
+          _subjects.length,
+          (index) {
+            final subject =
+                _subjects[index];
 
-          return DataRow(
-            cells: [
-              DataCell(Text('${index + 1}')),
-              DataCell(Text(subject['subject_code']?.toString() ?? '-')),
-              DataCell(Text(subject['subject_name']?.toString() ?? '-')),
-              DataCell(
-                Text(subject['faculty_handling']?.toString() ?? 'Not assigned'),
-              ),
-            ],
-          );
-        }),
+            return DataRow(
+              cells: [
+                DataCell(
+                  Text('${index + 1}'),
+                ),
+                DataCell(
+                  Text(
+                    subject['subject_code']
+                            ?.toString() ??
+                        '-',
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    subject['subject_name']
+                            ?.toString() ??
+                        '-',
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    subject['faculty_handling']
+                            ?.toString() ??
+                        'Not assigned',
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 }
 
+
 // ============================================================
 // ADMIN ATTENDANCE SESSIONS PAGE
 // ============================================================
 
-class AdminAttendanceSessionsPage extends StatefulWidget {
+class AdminAttendanceSessionsPage
+    extends StatefulWidget {
   final List<CameraDescription> cameras;
 
-  const AdminAttendanceSessionsPage({super.key, required this.cameras});
+  const AdminAttendanceSessionsPage({
+    super.key,
+    required this.cameras,
+  });
 
   @override
   State<AdminAttendanceSessionsPage> createState() =>
@@ -9573,7 +6853,8 @@ class _AdminAttendanceSessionsPageState
   }
 
   Future<String?> _token() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs =
+        await SharedPreferences.getInstance();
 
     return prefs.getString('auth_token');
   }
@@ -9583,8 +6864,12 @@ class _AdminAttendanceSessionsPageState
       final token = await _token();
 
       final response = await http.get(
-        Uri.parse('$backendUrl/admin/attendance-sessions/departments'),
-        headers: {'Authorization': 'Bearer $token'},
+        Uri.parse(
+          '$backendUrl/admin/attendance-sessions/departments',
+        ),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -9609,7 +6894,9 @@ class _AdminAttendanceSessionsPageState
     }
   }
 
-  Future<void> _loadGroups(int departmentId) async {
+  Future<void> _loadGroups(
+    int departmentId,
+  ) async {
     setState(() {
       _departmentId = departmentId;
       _semester = null;
@@ -9628,11 +6915,18 @@ class _AdminAttendanceSessionsPageState
 
       final uri = Uri.parse(
         '$backendUrl/admin/attendance-sessions/groups',
-      ).replace(queryParameters: {'department_id': departmentId.toString()});
+      ).replace(
+        queryParameters: {
+          'department_id':
+              departmentId.toString(),
+        },
+      );
 
       final response = await http.get(
         uri,
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -9658,7 +6952,9 @@ class _AdminAttendanceSessionsPageState
   }
 
   Future<void> _loadSubjects() async {
-    if (_departmentId == null || _semester == null || _division == null) {
+    if (_departmentId == null ||
+        _semester == null ||
+        _division == null) {
       return;
     }
 
@@ -9672,18 +6968,24 @@ class _AdminAttendanceSessionsPageState
     try {
       final token = await _token();
 
-      final uri = Uri.parse('$backendUrl/admin/attendance-sessions/subjects')
-          .replace(
-            queryParameters: {
-              'department_id': _departmentId!.toString(),
-              'semester': _semester!.toString(),
-              'division': _division!,
-            },
-          );
+      final uri = Uri.parse(
+        '$backendUrl/admin/attendance-sessions/subjects',
+      ).replace(
+        queryParameters: {
+          'department_id':
+              _departmentId!.toString(),
+          'semester':
+              _semester!.toString(),
+          'division':
+              _division!,
+        },
+      );
 
       final response = await http.get(
         uri,
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -9708,8 +7010,12 @@ class _AdminAttendanceSessionsPageState
     }
   }
 
-  Future<void> _loadSessions(String subjectCode) async {
-    if (_departmentId == null || _semester == null || _division == null) {
+  Future<void> _loadSessions(
+    String subjectCode,
+  ) async {
+    if (_departmentId == null ||
+        _semester == null ||
+        _division == null) {
       return;
     }
 
@@ -9722,19 +7028,26 @@ class _AdminAttendanceSessionsPageState
     try {
       final token = await _token();
 
-      final uri = Uri.parse('$backendUrl/admin/attendance-sessions/list')
-          .replace(
-            queryParameters: {
-              'department_id': _departmentId!.toString(),
-              'semester': _semester!.toString(),
-              'division': _division!,
-              'subject_code': subjectCode,
-            },
-          );
+      final uri = Uri.parse(
+        '$backendUrl/admin/attendance-sessions/list',
+      ).replace(
+        queryParameters: {
+          'department_id':
+              _departmentId!.toString(),
+          'semester':
+              _semester!.toString(),
+          'division':
+              _division!,
+          'subject_code':
+              subjectCode,
+        },
+      );
 
       final response = await http.get(
         uri,
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -9760,11 +7073,24 @@ class _AdminAttendanceSessionsPageState
   }
 
   String _semesterRoman(dynamic value) {
-    final semester = int.tryParse(value.toString());
+    final semester =
+        int.tryParse(value.toString());
 
-    const roman = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+    const roman = [
+      '',
+      'I',
+      'II',
+      'III',
+      'IV',
+      'V',
+      'VI',
+      'VII',
+      'VIII',
+    ];
 
-    if (semester != null && semester > 0 && semester < roman.length) {
+    if (semester != null &&
+        semester > 0 &&
+        semester < roman.length) {
       return roman[semester];
     }
 
@@ -9774,36 +7100,55 @@ class _AdminAttendanceSessionsPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Attendance Sessions')),
+      appBar: AppBar(
+        title: const Text(
+          'Attendance Sessions',
+        ),
+      ),
       body: _loadingDepartments
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 const Text(
                   'Department',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 10),
 
                 DropdownButtonFormField<int>(
                   initialValue: _departmentId,
-                  decoration: const InputDecoration(
+                  decoration:
+                      const InputDecoration(
                     border: OutlineInputBorder(),
                     labelText: 'Select Department',
                   ),
-                  items: _departments.map<DropdownMenuItem<int>>((department) {
-                    final id = int.tryParse(
-                      department['department_id'].toString(),
-                    );
+                  items: _departments
+                      .map<DropdownMenuItem<int>>(
+                    (department) {
+                      final id =
+                          int.tryParse(
+                        department[
+                                'department_id']
+                            .toString(),
+                      );
 
-                    return DropdownMenuItem(
-                      value: id,
-                      child: Text(
-                        department['department_name']?.toString() ?? '-',
-                      ),
-                    );
-                  }).toList(),
+                      return DropdownMenuItem(
+                        value: id,
+                        child: Text(
+                          department[
+                                  'department_name']
+                              ?.toString() ??
+                              '-',
+                        ),
+                      );
+                    },
+                  ).toList(),
                   onChanged: (value) {
                     if (value != null) {
                       _loadGroups(value);
@@ -9814,73 +7159,117 @@ class _AdminAttendanceSessionsPageState
                 const SizedBox(height: 22),
 
                 if (_loadingGroups)
-                  const Center(child: CircularProgressIndicator()),
+                  const Center(
+                    child:
+                        CircularProgressIndicator(),
+                  ),
 
-                if (!_loadingGroups && _groups.isNotEmpty) ...[
+                if (!_loadingGroups &&
+                    _groups.isNotEmpty) ...[
                   const Text(
                     'Semester - Division',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 10),
 
                   Wrap(
                     spacing: 10,
                     runSpacing: 10,
-                    children: _groups.map<Widget>((group) {
-                      final semester =
-                          int.tryParse(group['semester'].toString()) ?? 0;
+                    children:
+                        _groups.map<Widget>(
+                      (group) {
+                        final semester =
+                            int.tryParse(
+                                  group['semester']
+                                      .toString(),
+                                ) ??
+                                0;
 
-                      final division = group['division']?.toString() ?? '';
+                        final division =
+                            group['division']
+                                    ?.toString() ??
+                                '';
 
-                      return ChoiceChip(
-                        selected:
-                            _semester == semester && _division == division,
-                        label: Text(
-                          'Sem : '
-                          '${_semesterRoman(semester)}  '
-                          'Division : $division',
-                        ),
-                        onSelected: (_) {
-                          setState(() {
-                            _semester = semester;
-                            _division = division;
-                          });
+                        return ChoiceChip(
+                          selected:
+                              _semester ==
+                                      semester &&
+                                  _division ==
+                                      division,
+                          label: Text(
+                            'Sem : '
+                            '${_semesterRoman(semester)}  '
+                            'Division : $division',
+                          ),
+                          onSelected: (_) {
+                            setState(() {
+                              _semester =
+                                  semester;
+                              _division =
+                                  division;
+                            });
 
-                          _loadSubjects();
-                        },
-                      );
-                    }).toList(),
+                            _loadSubjects();
+                          },
+                        );
+                      },
+                    ).toList(),
                   ),
                 ],
 
                 const SizedBox(height: 22),
 
                 if (_loadingSubjects)
-                  const Center(child: CircularProgressIndicator()),
+                  const Center(
+                    child:
+                        CircularProgressIndicator(),
+                  ),
 
-                if (!_loadingSubjects && _subjects.isNotEmpty) ...[
+                if (!_loadingSubjects &&
+                    _subjects.isNotEmpty) ...[
                   const Text(
                     'Subject',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 10),
 
                   DropdownButtonFormField<String>(
                     initialValue: _subjectCode,
-                    decoration: const InputDecoration(
+                    decoration:
+                        const InputDecoration(
                       border: OutlineInputBorder(),
-                      labelText: 'Select Subject',
+                      labelText:
+                          'Select Subject',
                     ),
-                    items: _subjects.map<DropdownMenuItem<String>>((subject) {
-                      final code = subject['subject_code']?.toString() ?? '';
+                    items: _subjects
+                        .map<DropdownMenuItem<String>>(
+                      (subject) {
+                        final code =
+                            subject[
+                                    'subject_code']
+                                ?.toString() ??
+                                '';
 
-                      final name = subject['subject_name']?.toString() ?? '';
+                        final name =
+                            subject[
+                                    'subject_name']
+                                ?.toString() ??
+                                '';
 
-                      return DropdownMenuItem(
-                        value: code,
-                        child: Text('$code - $name'),
-                      );
-                    }).toList(),
+                        return DropdownMenuItem(
+                          value: code,
+                          child: Text(
+                            '$code - $name',
+                          ),
+                        );
+                      },
+                    ).toList(),
                     onChanged: (value) {
                       if (value != null) {
                         _loadSessions(value);
@@ -9892,9 +7281,13 @@ class _AdminAttendanceSessionsPageState
                 const SizedBox(height: 24),
 
                 if (_loadingSessions)
-                  const Center(child: CircularProgressIndicator()),
+                  const Center(
+                    child:
+                        CircularProgressIndicator(),
+                  ),
 
-                if (!_loadingSessions && _subjectCode != null)
+                if (!_loadingSessions &&
+                    _subjectCode != null)
                   _buildSessionsTable(),
               ],
             ),
@@ -9903,51 +7296,123 @@ class _AdminAttendanceSessionsPageState
 
   Widget _buildSessionsTable() {
     if (_sessions.isEmpty) {
-      return const _EmptyView(message: 'No attendance sessions found.');
+      return const _EmptyView(
+        message:
+            'No attendance sessions found.',
+      );
     }
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
         columns: const [
-          DataColumn(label: Text('Sl. No.')),
-          DataColumn(label: Text('Date')),
-          DataColumn(label: Text('Subject')),
-          DataColumn(label: Text('Session ID')),
-          DataColumn(label: Text('Faculty')),
-          DataColumn(label: Text('Start')),
-          DataColumn(label: Text('End')),
-          DataColumn(label: Text('Status')),
+          DataColumn(
+            label: Text('Sl. No.'),
+          ),
+          DataColumn(
+            label: Text('Date'),
+          ),
+          DataColumn(
+            label: Text('Subject'),
+          ),
+          DataColumn(
+            label: Text('Session ID'),
+          ),
+          DataColumn(
+            label: Text('Faculty'),
+          ),
+          DataColumn(
+            label: Text('Start'),
+          ),
+          DataColumn(
+            label: Text('End'),
+          ),
+          DataColumn(
+            label: Text('Status'),
+          ),
         ],
-        rows: List.generate(_sessions.length, (index) {
-          final session = _sessions[index];
+        rows: List.generate(
+          _sessions.length,
+          (index) {
+            final session =
+                _sessions[index];
 
-          return DataRow(
-            cells: [
-              DataCell(Text('${index + 1}')),
-              DataCell(Text(session['attendance_date']?.toString() ?? '-')),
-              DataCell(Text(session['subject_code']?.toString() ?? '-')),
-              DataCell(Text(session['id']?.toString() ?? '-')),
-              DataCell(Text(session['faculty_name']?.toString() ?? '-')),
-              DataCell(Text(session['start_time']?.toString() ?? '-')),
-              DataCell(Text(session['end_time']?.toString() ?? '-')),
-              DataCell(Text(session['status']?.toString() ?? '-')),
-            ],
-          );
-        }),
+            return DataRow(
+              cells: [
+                DataCell(
+                  Text('${index + 1}'),
+                ),
+                DataCell(
+                  Text(
+                    session['attendance_date']
+                            ?.toString() ??
+                        '-',
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    session['subject_code']
+                            ?.toString() ??
+                        '-',
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    session['id']
+                            ?.toString() ??
+                        '-',
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    session['faculty_name']
+                            ?.toString() ??
+                        '-',
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    session['start_time']
+                            ?.toString() ??
+                        '-',
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    session['end_time']
+                            ?.toString() ??
+                        '-',
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    session['status']
+                            ?.toString() ??
+                        '-',
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 }
 
+
 // ============================================================
 // ADMIN ATTENDANCE RECORDS PAGE
 // ============================================================
 
-class AdminAttendanceRecordsPage extends StatefulWidget {
+class AdminAttendanceRecordsPage
+    extends StatefulWidget {
   final List<CameraDescription> cameras;
 
-  const AdminAttendanceRecordsPage({super.key, required this.cameras});
+  const AdminAttendanceRecordsPage({
+    super.key,
+    required this.cameras,
+  });
 
   @override
   State<AdminAttendanceRecordsPage> createState() =>
@@ -9980,7 +7445,8 @@ class _AdminAttendanceRecordsPageState
   }
 
   Future<String?> _token() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs =
+        await SharedPreferences.getInstance();
 
     return prefs.getString('auth_token');
   }
@@ -9990,8 +7456,12 @@ class _AdminAttendanceRecordsPageState
       final token = await _token();
 
       final response = await http.get(
-        Uri.parse('$backendUrl/admin/attendance-records/departments'),
-        headers: {'Authorization': 'Bearer $token'},
+        Uri.parse(
+          '$backendUrl/admin/attendance-records/departments',
+        ),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -10016,7 +7486,9 @@ class _AdminAttendanceRecordsPageState
     }
   }
 
-  Future<void> _loadGroups(int departmentId) async {
+  Future<void> _loadGroups(
+    int departmentId,
+  ) async {
     setState(() {
       _departmentId = departmentId;
       _semester = null;
@@ -10035,11 +7507,18 @@ class _AdminAttendanceRecordsPageState
 
       final uri = Uri.parse(
         '$backendUrl/admin/attendance-records/groups',
-      ).replace(queryParameters: {'department_id': departmentId.toString()});
+      ).replace(
+        queryParameters: {
+          'department_id':
+              departmentId.toString(),
+        },
+      );
 
       final response = await http.get(
         uri,
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -10065,7 +7544,9 @@ class _AdminAttendanceRecordsPageState
   }
 
   Future<void> _loadSubjects() async {
-    if (_departmentId == null || _semester == null || _division == null) {
+    if (_departmentId == null ||
+        _semester == null ||
+        _division == null) {
       return;
     }
 
@@ -10079,18 +7560,24 @@ class _AdminAttendanceRecordsPageState
     try {
       final token = await _token();
 
-      final uri = Uri.parse('$backendUrl/admin/attendance-records/subjects')
-          .replace(
-            queryParameters: {
-              'department_id': _departmentId!.toString(),
-              'semester': _semester!.toString(),
-              'division': _division!,
-            },
-          );
+      final uri = Uri.parse(
+        '$backendUrl/admin/attendance-records/subjects',
+      ).replace(
+        queryParameters: {
+          'department_id':
+              _departmentId!.toString(),
+          'semester':
+              _semester!.toString(),
+          'division':
+              _division!,
+        },
+      );
 
       final response = await http.get(
         uri,
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -10115,8 +7602,12 @@ class _AdminAttendanceRecordsPageState
     }
   }
 
-  Future<void> _loadRecords(String subjectCode) async {
-    if (_departmentId == null || _semester == null || _division == null) {
+  Future<void> _loadRecords(
+    String subjectCode,
+  ) async {
+    if (_departmentId == null ||
+        _semester == null ||
+        _division == null) {
       return;
     }
 
@@ -10129,19 +7620,26 @@ class _AdminAttendanceRecordsPageState
     try {
       final token = await _token();
 
-      final uri = Uri.parse('$backendUrl/admin/attendance-records/list')
-          .replace(
-            queryParameters: {
-              'department_id': _departmentId!.toString(),
-              'semester': _semester!.toString(),
-              'division': _division!,
-              'subject_code': subjectCode,
-            },
-          );
+      final uri = Uri.parse(
+        '$backendUrl/admin/attendance-records/list',
+      ).replace(
+        queryParameters: {
+          'department_id':
+              _departmentId!.toString(),
+          'semester':
+              _semester!.toString(),
+          'division':
+              _division!,
+          'subject_code':
+              subjectCode,
+        },
+      );
 
       final response = await http.get(
         uri,
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -10161,17 +7659,31 @@ class _AdminAttendanceRecordsPageState
 
       setState(() {
         _loadingRecords = false;
-        _error = 'Failed to load attendance records.';
+        _error =
+            'Failed to load attendance records.';
       });
     }
   }
 
   String _semesterRoman(dynamic value) {
-    final semester = int.tryParse(value.toString());
+    final semester =
+        int.tryParse(value.toString());
 
-    const roman = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+    const roman = [
+      '',
+      'I',
+      'II',
+      'III',
+      'IV',
+      'V',
+      'VI',
+      'VII',
+      'VIII',
+    ];
 
-    if (semester != null && semester > 0 && semester < roman.length) {
+    if (semester != null &&
+        semester > 0 &&
+        semester < roman.length) {
       return roman[semester];
     }
 
@@ -10181,36 +7693,55 @@ class _AdminAttendanceRecordsPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Attendance Records')),
+      appBar: AppBar(
+        title: const Text(
+          'Attendance Records',
+        ),
+      ),
       body: _loadingDepartments
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 const Text(
                   'Department',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 10),
 
                 DropdownButtonFormField<int>(
                   initialValue: _departmentId,
-                  decoration: const InputDecoration(
+                  decoration:
+                      const InputDecoration(
                     border: OutlineInputBorder(),
                     labelText: 'Select Department',
                   ),
-                  items: _departments.map<DropdownMenuItem<int>>((department) {
-                    final id = int.tryParse(
-                      department['department_id'].toString(),
-                    );
+                  items: _departments
+                      .map<DropdownMenuItem<int>>(
+                    (department) {
+                      final id =
+                          int.tryParse(
+                        department[
+                                'department_id']
+                            .toString(),
+                      );
 
-                    return DropdownMenuItem(
-                      value: id,
-                      child: Text(
-                        department['department_name']?.toString() ?? '-',
-                      ),
-                    );
-                  }).toList(),
+                      return DropdownMenuItem(
+                        value: id,
+                        child: Text(
+                          department[
+                                  'department_name']
+                              ?.toString() ??
+                              '-',
+                        ),
+                      );
+                    },
+                  ).toList(),
                   onChanged: (value) {
                     if (value != null) {
                       _loadGroups(value);
@@ -10221,73 +7752,117 @@ class _AdminAttendanceRecordsPageState
                 const SizedBox(height: 22),
 
                 if (_loadingGroups)
-                  const Center(child: CircularProgressIndicator()),
+                  const Center(
+                    child:
+                        CircularProgressIndicator(),
+                  ),
 
-                if (!_loadingGroups && _groups.isNotEmpty) ...[
+                if (!_loadingGroups &&
+                    _groups.isNotEmpty) ...[
                   const Text(
                     'Semester - Division',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 10),
 
                   Wrap(
                     spacing: 10,
                     runSpacing: 10,
-                    children: _groups.map<Widget>((group) {
-                      final semester =
-                          int.tryParse(group['semester'].toString()) ?? 0;
+                    children:
+                        _groups.map<Widget>(
+                      (group) {
+                        final semester =
+                            int.tryParse(
+                                  group['semester']
+                                      .toString(),
+                                ) ??
+                                0;
 
-                      final division = group['division']?.toString() ?? '';
+                        final division =
+                            group['division']
+                                    ?.toString() ??
+                                '';
 
-                      return ChoiceChip(
-                        selected:
-                            _semester == semester && _division == division,
-                        label: Text(
-                          'Sem : '
-                          '${_semesterRoman(semester)}  '
-                          'Division : $division',
-                        ),
-                        onSelected: (_) {
-                          setState(() {
-                            _semester = semester;
-                            _division = division;
-                          });
+                        return ChoiceChip(
+                          selected:
+                              _semester ==
+                                      semester &&
+                                  _division ==
+                                      division,
+                          label: Text(
+                            'Sem : '
+                            '${_semesterRoman(semester)}  '
+                            'Division : $division',
+                          ),
+                          onSelected: (_) {
+                            setState(() {
+                              _semester =
+                                  semester;
+                              _division =
+                                  division;
+                            });
 
-                          _loadSubjects();
-                        },
-                      );
-                    }).toList(),
+                            _loadSubjects();
+                          },
+                        );
+                      },
+                    ).toList(),
                   ),
                 ],
 
                 const SizedBox(height: 22),
 
                 if (_loadingSubjects)
-                  const Center(child: CircularProgressIndicator()),
+                  const Center(
+                    child:
+                        CircularProgressIndicator(),
+                  ),
 
-                if (!_loadingSubjects && _subjects.isNotEmpty) ...[
+                if (!_loadingSubjects &&
+                    _subjects.isNotEmpty) ...[
                   const Text(
                     'Subject',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 10),
 
                   DropdownButtonFormField<String>(
                     initialValue: _subjectCode,
-                    decoration: const InputDecoration(
+                    decoration:
+                        const InputDecoration(
                       border: OutlineInputBorder(),
-                      labelText: 'Select Subject',
+                      labelText:
+                          'Select Subject',
                     ),
-                    items: _subjects.map<DropdownMenuItem<String>>((subject) {
-                      final code = subject['subject_code']?.toString() ?? '';
+                    items: _subjects
+                        .map<DropdownMenuItem<String>>(
+                      (subject) {
+                        final code =
+                            subject[
+                                    'subject_code']
+                                ?.toString() ??
+                                '';
 
-                      final name = subject['subject_name']?.toString() ?? '';
+                        final name =
+                            subject[
+                                    'subject_name']
+                                ?.toString() ??
+                                '';
 
-                      return DropdownMenuItem(
-                        value: code,
-                        child: Text('$code - $name'),
-                      );
-                    }).toList(),
+                        return DropdownMenuItem(
+                          value: code,
+                          child: Text(
+                            '$code - $name',
+                          ),
+                        );
+                      },
+                    ).toList(),
                     onChanged: (value) {
                       if (value != null) {
                         _loadRecords(value);
@@ -10299,9 +7874,13 @@ class _AdminAttendanceRecordsPageState
                 const SizedBox(height: 24),
 
                 if (_loadingRecords)
-                  const Center(child: CircularProgressIndicator()),
+                  const Center(
+                    child:
+                        CircularProgressIndicator(),
+                  ),
 
-                if (!_loadingRecords && _subjectCode != null)
+                if (!_loadingRecords &&
+                    _subjectCode != null)
                   _buildRecordsTable(),
               ],
             ),
@@ -10310,57 +7889,106 @@ class _AdminAttendanceRecordsPageState
 
   Widget _buildRecordsTable() {
     if (_records.isEmpty) {
-      return const _EmptyView(message: 'No attendance records found.');
+      return const _EmptyView(
+        message:
+            'No attendance records found.',
+      );
     }
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
         columns: const [
-          DataColumn(label: Text('Sl. No.')),
-          DataColumn(label: Text('USN')),
-          DataColumn(label: Text('Student Name')),
-          DataColumn(label: Text('Date')),
-          DataColumn(label: Text('Session')),
-          DataColumn(label: Text('Status')),
-          DataColumn(label: Text('Face Verified')),
+          DataColumn(
+            label: Text('Sl. No.'),
+          ),
+          DataColumn(
+            label: Text('USN'),
+          ),
+          DataColumn(
+            label: Text('Student Name'),
+          ),
+          DataColumn(
+            label: Text('Date'),
+          ),
+          DataColumn(
+            label: Text('Session'),
+          ),
+          DataColumn(
+            label: Text('Status'),
+          ),
+          DataColumn(
+            label: Text('Face Verified'),
+          ),
         ],
-        rows: List.generate(_records.length, (index) {
-          final record = _records[index];
+        rows: List.generate(
+          _records.length,
+          (index) {
+            final record =
+                _records[index];
 
-          final status = record['status']?.toString() ?? '-';
+            final status =
+                record['status']
+                        ?.toString() ??
+                    '-';
 
-          final faceVerified = record['face_verified']?.toString() == '1'
-              ? 'Yes'
-              : 'No';
+            final faceVerified =
+                record['face_verified']
+                            ?.toString() ==
+                        '1'
+                    ? 'Yes'
+                    : 'No';
 
-          return DataRow(
-            cells: [
-              DataCell(Text('${index + 1}')),
-              DataCell(Text(record['student_id']?.toString() ?? '-')),
-              DataCell(Text(record['full_name']?.toString() ?? '-')),
-              DataCell(
-                Text(
-                  record['attendance_date']?.toString() ??
-                      record['record_date']?.toString() ??
-                      '-',
+            return DataRow(
+              cells: [
+                DataCell(
+                  Text('${index + 1}'),
                 ),
-              ),
-              DataCell(
-                Text(
-                  'Session '
-                  '${record['session_id'] ?? '-'}',
+                DataCell(
+                  Text(
+                    record['student_id']
+                            ?.toString() ??
+                        '-',
+                  ),
                 ),
-              ),
-              DataCell(Text(status)),
-              DataCell(Text(faceVerified)),
-            ],
-          );
-        }),
+                DataCell(
+                  Text(
+                    record['full_name']
+                            ?.toString() ??
+                        '-',
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    record['attendance_date']
+                            ?.toString() ??
+                        record[
+                                'record_date']
+                            ?.toString() ??
+                        '-',
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    'Session '
+                    '${record['session_id'] ?? '-'}',
+                  ),
+                ),
+                DataCell(
+                  Text(status),
+                ),
+                DataCell(
+                  Text(faceVerified),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 }
+
 
 // ============================================================
 // ADMIN DETAILS DIALOG
@@ -10370,7 +7998,10 @@ class _AdminDetailsDialog extends StatelessWidget {
   final String title;
   final Map<String, dynamic> data;
 
-  const _AdminDetailsDialog({required this.title, required this.data});
+  const _AdminDetailsDialog({
+    required this.title,
+    required this.data,
+  });
 
   String _formatKey(String key) {
     final result = key.replaceAll('_', ' ');
@@ -10385,7 +8016,7 @@ class _AdminDetailsDialog extends StatelessWidget {
           (word) => word.isEmpty
               ? word
               : '${word[0].toUpperCase()}'
-                    '${word.substring(1)}',
+                '${word.substring(1)}',
         )
         .join(' ');
   }
@@ -10418,23 +8049,35 @@ class _AdminDetailsDialog extends StatelessWidget {
         width: 500,
         child: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: data.entries.map((entry) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _formatKey(entry.key),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(_formatValue(entry.value)),
-                  ],
-                ),
-              );
-            }).toList(),
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
+            children: data.entries.map(
+              (entry) {
+                return Padding(
+                  padding:
+                      const EdgeInsets.only(
+                    bottom: 14,
+                  ),
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _formatKey(entry.key),
+                        style: const TextStyle(
+                          fontWeight:
+                              FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _formatValue(entry.value),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ).toList(),
           ),
         ),
       ),
@@ -10450,6 +8093,7 @@ class _AdminDetailsDialog extends StatelessWidget {
   }
 }
 
+
 // ============================================================
 // ADMIN EMPTY VIEW
 // ============================================================
@@ -10457,7 +8101,9 @@ class _AdminDetailsDialog extends StatelessWidget {
 class _EmptyView extends StatelessWidget {
   final String message;
 
-  const _EmptyView({required this.message});
+  const _EmptyView({
+    required this.message,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -10466,15 +8112,22 @@ class _EmptyView extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            const Icon(Icons.inbox_outlined, size: 48),
+            const Icon(
+              Icons.inbox_outlined,
+              size: 48,
+            ),
             const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
     );
   }
 }
+
 
 // ============================================================
 // ADMIN ERROR VIEW
@@ -10484,7 +8137,10 @@ class _ErrorView extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _ErrorView({required this.message, required this.onRetry});
+  const _ErrorView({
+    required this.message,
+    required this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -10494,9 +8150,15 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 55),
+            const Icon(
+              Icons.error_outline,
+              size: 55,
+            ),
             const SizedBox(height: 14),
-            Text(message, textAlign: TextAlign.center),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 18),
             ElevatedButton.icon(
               onPressed: onRetry,
@@ -11224,62 +8886,35 @@ class _AttendancePageState extends State<AttendancePage> {
       // AUTHENTICATION FAILURE
       // ======================================================
 
-      // ======================================================
-// AUTHENTICATION FAILURE
-// ======================================================
+      if (response.statusCode == 401) {
+        if (!mounted) return;
 
-if (response.statusCode == 401) {
-  debugPrint(
-    'ATTENDANCE AUTHENTICATION FAILED: '
-    '${response.body}',
-  );
+        setState(() {
+          _processing = false;
+          _statusMessage = 'Session expired. Please login again.';
+        });
 
-  final prefs = await SharedPreferences.getInstance();
+        await showDialog(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Authentication Required'),
+            content: const Text(
+              'Your login session has expired.\n\n'
+              'Please login again before marking attendance.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
 
-  // Remove only the invalid authentication session.
-  await prefs.remove('auth_token');
-  await prefs.remove('user_role');
-  await prefs.remove('username');
-  await prefs.remove('user_id');
-
-  if (!mounted) return;
-
-  setState(() {
-    _processing = false;
-    _statusMessage =
-        'Your login session is no longer valid. Please login again.';
-  });
-
-  await showDialog(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Login Required'),
-      content: const Text(
-        'Your authentication session is no longer valid.\n\n'
-        'Please login again to continue marking attendance.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.pop(dialogContext);
-          },
-          child: const Text('OK'),
-        ),
-      ],
-    ),
-  );
-
-  if (!mounted) return;
-
-  Navigator.of(context).pushAndRemoveUntil(
-    MaterialPageRoute(
-      builder: (_) => LoginPage(cameras: widget.cameras),
-    ),
-    (route) => false,
-  );
-
-  return;
-}
+        return;
+      }
 
       // ======================================================
       // ATTENDANCE SUCCESS
@@ -12355,48 +9990,54 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
   // ============================================================
 
   Future<void> _logout() async {
-    final shouldLogout = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Logout'),
-          content: const Text('Are you sure you want to logout?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop(false);
-              },
-              child: const Text('CANCEL'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop(true);
-              },
-              child: const Text('LOGOUT'),
-            ),
-          ],
-        );
-      },
-    );
+  final shouldLogout = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: const Text('Logout'),
+        content: const Text(
+          'Are you sure you want to logout?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop(false);
+            },
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop(true);
+            },
+            child: const Text('LOGOUT'),
+          ),
+        ],
+      );
+    },
+  );
 
-    if (shouldLogout != true) {
-      return;
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-
-    // Remove the login token ONLY when the user explicitly logs out.
-    await prefs.remove('auth_token');
-
-    if (!mounted) return;
-
-    // Completely remove the dashboard and every previous page
-    // from the navigation stack and return directly to LoginPage.
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => LoginPage(cameras: widget.cameras)),
-      (route) => false,
-    );
+  if (shouldLogout != true) {
+    return;
   }
+
+  final prefs = await SharedPreferences.getInstance();
+
+  // Remove the login token ONLY when the user explicitly logs out.
+  await prefs.remove('auth_token');
+
+  if (!mounted) return;
+
+  // Completely remove the dashboard and every previous page
+  // from the navigation stack and return directly to LoginPage.
+  Navigator.of(context).pushAndRemoveUntil(
+    MaterialPageRoute(
+      builder: (_) => LoginPage(
+  cameras: widget.cameras,
+),
+    ),
+    (route) => false,
+  );
+}
   // ============================================================
   // PROFILE AVATAR
   // ============================================================
@@ -14682,10 +12323,6 @@ class _FacultyAttendanceReportPageState
     try {
       final pdf = pw.Document();
 
-      // ----------------------------------------------------------
-      // SESSION DETAILS
-      // ----------------------------------------------------------
-
       final String semester = _toStringValue(session['semester']);
 
       final String division = _toStringValue(session['division']);
@@ -14698,10 +12335,6 @@ class _FacultyAttendanceReportPageState
 
       final String status = _toStringValue(session['status']);
 
-      // ----------------------------------------------------------
-      // TEACHER LOCATION
-      // ----------------------------------------------------------
-
       final String latitude = _toStringValue(
         session['teacher_latitude'] ?? session['allowed_latitude'],
       );
@@ -14710,17 +12343,9 @@ class _FacultyAttendanceReportPageState
         session['teacher_longitude'] ?? session['allowed_longitude'],
       );
 
-      // ----------------------------------------------------------
-      // CLASSROOM DIMENSIONS
-      // ----------------------------------------------------------
-
-      final double classroomLength = _toDouble(session['classroom_length']);
-
-      final double classroomWidth = _toDouble(session['classroom_width']);
-
-      // ----------------------------------------------------------
-      // STUDENT DATA
-      // ----------------------------------------------------------
+      final double radius = _toDouble(
+        session['geofence_radius'] ?? session['allowed_radius'],
+      );
 
       final dynamic studentsValue = session['students'];
 
@@ -14756,17 +12381,10 @@ class _FacultyAttendanceReportPageState
           ? ((present + late) / total) * 100
           : 0.0;
 
-      // ==========================================================
-      // PDF PAGE
-      // ==========================================================
-
       pdf.addPage(
         pw.MultiPage(
           build: (context) {
             return [
-              // --------------------------------------------------
-              // TITLE
-              // --------------------------------------------------
               pw.Center(
                 child: pw.Text(
                   'ATTENDANCE REPORT',
@@ -14779,9 +12397,6 @@ class _FacultyAttendanceReportPageState
 
               pw.SizedBox(height: 15),
 
-              // --------------------------------------------------
-              // SUBJECT DETAILS
-              // --------------------------------------------------
               pw.Text(
                 'Subject: $subjectName',
                 style: pw.TextStyle(
@@ -14798,9 +12413,6 @@ class _FacultyAttendanceReportPageState
 
               pw.SizedBox(height: 10),
 
-              // --------------------------------------------------
-              // SESSION DETAILS
-              // --------------------------------------------------
               pw.Text(
                 'Session: $sessionNumber',
                 style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
@@ -14814,27 +12426,14 @@ class _FacultyAttendanceReportPageState
 
               pw.SizedBox(height: 8),
 
-              // --------------------------------------------------
-              // TEACHER LOCATION
-              // --------------------------------------------------
               pw.Text('Teacher Latitude: $latitude'),
 
               pw.Text('Teacher Longitude: $longitude'),
 
-              // --------------------------------------------------
-              // CLASSROOM DIMENSIONS
-              // --------------------------------------------------
-              pw.Text(
-                'Classroom Size: '
-                '${classroomLength.toStringAsFixed(1)} m × '
-                '${classroomWidth.toStringAsFixed(1)} m',
-              ),
+              pw.Text('Geofence Radius: ${radius.toStringAsFixed(1)} m'),
 
               pw.SizedBox(height: 18),
 
-              // --------------------------------------------------
-              // ATTENDANCE SUMMARY
-              // --------------------------------------------------
               pw.Text(
                 'Attendance Summary',
                 style: pw.TextStyle(
@@ -14857,7 +12456,6 @@ class _FacultyAttendanceReportPageState
                       _pdfCell('Attendance %', bold: true),
                     ],
                   ),
-
                   pw.TableRow(
                     children: [
                       _pdfCell(present.toString()),
@@ -14872,9 +12470,6 @@ class _FacultyAttendanceReportPageState
 
               pw.SizedBox(height: 20),
 
-              // --------------------------------------------------
-              // STUDENT ATTENDANCE
-              // --------------------------------------------------
               pw.Text(
                 'Student Attendance',
                 style: pw.TextStyle(
@@ -14892,9 +12487,7 @@ class _FacultyAttendanceReportPageState
                     return ['-', '-', '-', '-', '-'];
                   }
 
-                  final Map<String, dynamic> map = Map<String, dynamic>.from(
-                    student,
-                  );
+                  final map = Map<String, dynamic>.from(student);
 
                   return [
                     _toStringValue(map['usn']),
@@ -14904,14 +12497,11 @@ class _FacultyAttendanceReportPageState
                     map['gps_verified'] == true ? 'Verified' : 'No',
                   ];
                 }).toList(),
-
                 cellStyle: const pw.TextStyle(fontSize: 8),
-
                 headerStyle: pw.TextStyle(
                   fontSize: 8,
                   fontWeight: pw.FontWeight.bold,
                 ),
-
                 cellPadding: const pw.EdgeInsets.all(5),
               ),
             ];
@@ -14919,11 +12509,7 @@ class _FacultyAttendanceReportPageState
         ),
       );
 
-      // ==========================================================
-      // SAVE PDF
-      // ==========================================================
-
-      final Uint8List bytes = await pdf.save();
+      final bytes = await pdf.save();
 
       final String filename = '${subjectCode}_Session_$sessionNumber.pdf';
 
@@ -15476,9 +13062,8 @@ class _FacultyAttendanceReportPageState
     // LOCATION
     // ==========================================================
 
-    final dynamic lengthValue = session['classroom_length'];
-
-    final dynamic widthValue = session['classroom_width'];
+    final dynamic radiusValue =
+        session['geofence_radius'] ?? session['allowed_radius'];
 
     final dynamic latitudeValue =
         session['teacher_latitude'] ?? session['allowed_latitude'];
@@ -15486,9 +13071,7 @@ class _FacultyAttendanceReportPageState
     final dynamic longitudeValue =
         session['teacher_longitude'] ?? session['allowed_longitude'];
 
-    final double classroomLength = _toDouble(lengthValue);
-
-    final double classroomWidth = _toDouble(widthValue);
+    final double allowedRadius = _toDouble(radiusValue);
 
     final String latitude = _toStringValue(latitudeValue);
 
@@ -15641,9 +13224,7 @@ class _FacultyAttendanceReportPageState
           _buildInfoRow(
             Icons.location_on,
             'Geofence radius',
-            'Classroom Size: '
-                '${classroomLength.toStringAsFixed(1)} m × '
-                '${classroomWidth.toStringAsFixed(1)} m',
+            '${allowedRadius.toStringAsFixed(1)} m',
           ),
 
           _buildInfoRow(
@@ -16212,7 +13793,6 @@ class _FacultyAttendanceReportPageState
     );
   }
 }
-
 // ============================================================
 // ADMIN DASHBOARD
 // ============================================================
