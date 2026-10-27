@@ -748,15 +748,18 @@ def subject_list():
 
             FROM subjects s
 
-            LEFT JOIN attendance_sessions a
-                ON a.subject_code = s.subject_code
-               AND a.semester = %s
-               AND a.division = %s
+            LEFT JOIN faculty_subject_assignments fa
+                ON fa.subject_id = s.id
+               AND fa.semester = %s
+               AND fa.division = %s
+               AND fa.status = 'Accepted'
 
             LEFT JOIN faculty f
-                ON f.id = a.faculty_id
+                ON f.id = fa.faculty_id
 
             WHERE s.department_id = %s
+              AND s.semester = %s
+              AND s.is_active = 1
 
             GROUP BY
                 s.id,
@@ -768,9 +771,10 @@ def subject_list():
         """, (
             semester,
             division,
-            str(semester),
+            semester,
             division,
-            department_id
+            department_id,
+            semester
         ))
 
         return jsonify({

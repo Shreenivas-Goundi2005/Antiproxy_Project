@@ -894,22 +894,32 @@ def get_student_dashboard():
         # for that student's class roster.
         # ----------------------------------------------------
 
+        
         cursor.execute(
             """
             SELECT DISTINCT
-                cr.subject_code,
-                cr.semester,
-                cr.division
-            FROM class_roster cr
-            WHERE cr.student_id = %s
-              AND cr.semester = %s
-              AND UPPER(cr.division) = %s
-            ORDER BY cr.subject_code
+                s.subject_code,
+                s.subject_name,
+                s.semester
+            FROM student_subject_registrations r
+            INNER JOIN subjects s
+                ON s.id = r.subject_id
+            INNER JOIN departments d
+                ON d.id = s.department_id
+            WHERE r.student_id = %s
+              AND s.is_active = 1
+              AND s.semester = %s
+              AND (
+                    d.department_name = %s
+                    OR CAST(d.id AS CHAR) = %s
+                  )
+            ORDER BY s.subject_name
             """,
             (
                 student_database_id,
                 student_semester,
-                student_division
+                student["department"],
+                str(student["department"])
             )
         )
 
@@ -917,6 +927,8 @@ def get_student_dashboard():
 
         subjects = []
 
+
+        
         # ----------------------------------------------------
         # Calculate attendance separately for every registered
         # subject.
@@ -932,13 +944,12 @@ def get_student_dashboard():
                 roster_subject["semester"]
             ).strip()
 
-            subject_division = str(
-                roster_subject["division"]
-            ).strip().upper()
+            subject_division = student_division
 
-            subject_name = get_subject_name(
-                subject_code
-            )
+            subject_name = str(
+                roster_subject["subject_name"]
+            ).strip()
+
 
             # ------------------------------------------------
             # Total classes conducted for this subject.

@@ -10,6 +10,9 @@ from routes.session import session_bp
 from routes.faculty_register import faculty_register_bp
 from routes.roster import roster_bp
 from routes.admin import admin_bp
+from routes.subject_management import subject_management_bp
+from routes.faculty_assignments import faculty_assignments_bp
+from routes.student_subjects import student_subjects_bp
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = (
@@ -32,7 +35,9 @@ app.register_blueprint(session_bp)
 app.register_blueprint(faculty_register_bp)
 app.register_blueprint(roster_bp)
 app.register_blueprint(admin_bp)
-
+app.register_blueprint(subject_management_bp)
+app.register_blueprint(faculty_assignments_bp)
+app.register_blueprint(student_subjects_bp)
 
 # ==============================
 # START SERVER

@@ -19,12 +19,13 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 // ============================================================
 // BACKEND CONFIGURATION
 // ============================================================
 
-const String backendUrl = 'http://10.249.162.207:5000';
+const String backendUrl = 'http://10.41.202.207:5000';
 
 // ============================================================
 // MAIN
@@ -236,7 +237,13 @@ class _LoginPageState extends State<LoginPage> {
       final response = await http.post(
         Uri.parse('$backendUrl/login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username, 'password': password}),
+        body: jsonEncode({
+          if (_selectedRole == 'faculty')
+            'employee_id': username
+          else
+            'username': username,
+          'password': password,
+        }),
       );
 
       Map<String, dynamic> data = {};
@@ -719,7 +726,9 @@ class _LoginPageState extends State<LoginPage> {
         // ------------------------------------------------------
         TextButton(
           onPressed: _loading ? null : _changeRole,
-          child: const Text('← CHANGE USER TYPE'),
+          child: const Text(
+            'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â CHANGE USER TYPE',
+          ),
         ),
       ],
     );
@@ -854,6 +863,35 @@ class _RegisterPageState extends State<RegisterPage> {
 
       setState(() {
         _message = 'Could not select photos:\n$e';
+      });
+    }
+  }
+
+  Future<void> _takePhoto() async {
+    if (_loading) return;
+
+    try {
+      final XFile? photo = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+
+      if (photo == null || !mounted) return;
+
+      setState(() {
+        if (_photos.length >= 4) {
+          _message = 'You can register with a maximum of 4 photos.';
+          return;
+        }
+
+        _photos.add(photo);
+        _message = '${_photos.length} photo(s) selected.';
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _message = 'Could not capture photo:\n$e';
       });
     }
   }
@@ -1053,7 +1091,7 @@ class _RegisterPageState extends State<RegisterPage> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -1190,7 +1228,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(12),
                   child: Column(
                     children: [
                       const Text(
@@ -1211,10 +1249,24 @@ class _RegisterPageState extends State<RegisterPage> {
 
                       const SizedBox(height: 12),
 
-                      ElevatedButton.icon(
-                        onPressed: _loading ? null : _pickPhotos,
-                        icon: const Icon(Icons.photo_library),
-                        label: const Text('SELECT PHOTOS'),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 12,
+                        runSpacing: 8,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: _loading ? null : _pickPhotos,
+                            icon: const Icon(Icons.photo_library),
+                            label: const Text('CHOOSE FROM GALLERY'),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: _loading || _photos.length >= 4
+                                ? null
+                                : _takePhoto,
+                            icon: const Icon(Icons.camera_alt),
+                            label: const Text('TAKE PHOTO'),
+                          ),
+                        ],
                       ),
 
                       const SizedBox(height: 12),
@@ -1512,7 +1564,7 @@ class _FacultyRegisterPageState extends State<FacultyRegisterPage> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -1669,494 +1721,360 @@ class _FacultyRegisterPageState extends State<FacultyRegisterPage> {
 // FACULTY DASHBOARD
 // ============================================================
 
-class ClassroomGeofencePreview extends StatelessWidget {
-  final double length;
-  final double width;
-  final double? accuracy;
-  final bool verified;
-  final bool compact;
+// ==========================================================
+// FACULTY ASSIGNMENTS
+// ==========================================================
 
-  const ClassroomGeofencePreview({
-    super.key,
-    required this.length,
-    required this.width,
-    this.accuracy,
-    this.verified = false,
-    this.compact = false,
-  });
+class FacultyAssignmentsPage extends StatefulWidget {
+  final VoidCallback? onAcceptedAssignmentsChanged;
+
+  const FacultyAssignmentsPage({super.key, this.onAcceptedAssignmentsChanged});
+
+  @override
+  State<FacultyAssignmentsPage> createState() => _FacultyAssignmentsPageState();
+}
+
+class _FacultyAssignmentsPageState extends State<FacultyAssignmentsPage> {
+  bool _loading = true;
+  String? _error;
+  bool _updating = false;
+  List<Map<String, dynamic>> _assignments = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAssignments();
+  }
+
+  Future<Map<String, String>?> _headers() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    if (token == null || token.trim().isEmpty) return null;
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${token.trim()}',
+    };
+  }
+
+  Future<void> _loadAssignments() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final headers = await _headers();
+      if (headers == null) {
+        throw Exception('Your login session has expired. Please log in again.');
+      }
+
+      final response = await http.get(
+        Uri.parse('$backendUrl/api/assignments/faculty'),
+        headers: headers,
+      );
+
+      final dynamic decoded = jsonDecode(response.body);
+      if (response.statusCode != 200 ||
+          decoded is! Map ||
+          decoded['success'] != true) {
+        final message = decoded is Map
+            ? (decoded['message']?.toString() ?? 'Unable to load assignments.')
+            : 'Unable to load assignments.';
+        throw Exception(message);
+      }
+
+      final dynamic rows = decoded['assignments'];
+      final loaded = <Map<String, dynamic>>[];
+      if (rows is List) {
+        for (final row in rows) {
+          if (row is Map) {
+            loaded.add(Map<String, dynamic>.from(row));
+          }
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _assignments = loaded;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _updateStatus(
+    Map<String, dynamic> assignment,
+    String status,
+  ) async {
+    if (_updating) return;
+    final id = int.tryParse('${assignment['assignment_id']}');
+    if (id == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invalid assignment ID.')));
+      return;
+    }
+
+    setState(() => _updating = true);
+    try {
+      final headers = await _headers();
+      if (headers == null) {
+        throw Exception('Your login session has expired. Please log in again.');
+      }
+
+      final response = await http.patch(
+        Uri.parse('$backendUrl/api/assignments/$id/status'),
+        headers: headers,
+        body: jsonEncode({'status': status}),
+      );
+
+      final dynamic decoded = jsonDecode(response.body);
+      if (response.statusCode != 200 ||
+          decoded is! Map ||
+          decoded['success'] != true) {
+        final message = decoded is Map
+            ? (decoded['message']?.toString() ?? 'Could not update assignment.')
+            : 'Could not update assignment.';
+        throw Exception(message);
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Assignment $status successfully.')),
+      );
+
+      await _loadAssignments();
+      if (status == 'Accepted') {
+        widget.onAcceptedAssignmentsChanged?.call();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _updating = false);
+    }
+  }
+
+  Color _statusColor(String status, ColorScheme colors) {
+    switch (status.toLowerCase()) {
+      case 'accepted':
+        return Colors.green;
+      case 'rejected':
+        return colors.error;
+      default:
+        return Colors.orange.shade800;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
-    final area = length > 0 && width > 0 ? length * width : 0.0;
+    final colors = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: EdgeInsets.all(compact ? 14 : 16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(compact ? 20 : 24),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: .65)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .035),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Faculty Assignments'),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh assignments',
+            onPressed: _loading ? null : _loadAssignments,
+            icon: const Icon(Icons.refresh),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: primary.withValues(alpha: .10),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.crop_free_rounded, color: primary),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Classroom geofence',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Rectangular attendance boundary',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: verified
-                      ? Colors.green.withValues(alpha: .10)
-                      : primary.withValues(alpha: .09),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: verified
-                        ? Colors.green.withValues(alpha: .22)
-                        : primary.withValues(alpha: .18),
-                  ),
-                ),
-                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      verified
-                          ? Icons.verified_rounded
-                          : Icons.visibility_rounded,
-                      size: 14,
-                      color: verified ? Colors.green.shade700 : primary,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      verified ? 'VERIFIED' : 'PREVIEW',
-                      style: TextStyle(
-                        color: verified ? Colors.green.shade700 : primary,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: .4,
-                      ),
+                    const Icon(Icons.cloud_off, size: 44),
+                    const SizedBox(height: 12),
+                    Text(_error!, textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: _loadAssignments,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Retry'),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: BoxDecoration(
-              color: primary.withValues(alpha: .055),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline_rounded, size: 16, color: primary),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'The faculty position is the classroom centre. Students must stay inside the rectangle.',
-                    style: TextStyle(fontSize: 11, height: 1.3),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: compact ? 224 : 270,
-            width: double.infinity,
-            child: CustomPaint(
-              painter: ClassroomGeofencePainter(
-                length: length,
-                width: width,
-                primary: primary,
-                verified: verified,
-                accuracy: accuracy,
+            )
+          : _assignments.isEmpty
+          ? RefreshIndicator(
+              onRefresh: _loadAssignments,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 140),
+                  Icon(Icons.assignment_outlined, size: 56),
+                  SizedBox(height: 16),
+                  Center(child: Text('No assignments found.')),
+                ],
               ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(
-                child: _metricCard(
-                  context,
-                  Icons.straighten_rounded,
-                  'LENGTH',
-                  '${length.toStringAsFixed(1)} m',
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _metricCard(
-                  context,
-                  Icons.width_normal_rounded,
-                  'WIDTH',
-                  '${width.toStringAsFixed(1)} m',
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _metricCard(
-                  context,
-                  Icons.square_foot_rounded,
-                  'AREA',
-                  '${area.toStringAsFixed(1)} m²',
-                ),
-              ),
-            ],
-          ),
-          if (accuracy != null) ...[
-            const SizedBox(height: 9),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(
-                color: verified
-                    ? Colors.green.withValues(alpha: .075)
-                    : primary.withValues(alpha: .06),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
+            )
+          : RefreshIndicator(
+              onRefresh: _loadAssignments,
+              child: ListView(
+                padding: const EdgeInsets.all(14),
                 children: [
-                  Icon(
-                    Icons.gps_fixed_rounded,
-                    size: 17,
-                    color: verified ? Colors.green.shade700 : primary,
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Centre accuracy',
-                      style: TextStyle(fontSize: 11),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.assignment_turned_in_outlined,
+                            size: 32,
+                            color: colors.primary,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              '${_assignments.length} assignment(s)',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  Text(
-                    '${accuracy!.toStringAsFixed(1)} m',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      color: verified ? Colors.green.shade700 : primary,
-                    ),
-                  ),
+                  const SizedBox(height: 8),
+                  ..._assignments.map((assignment) {
+                    final name = '${assignment['subject_name'] ?? 'Subject'}';
+                    final code = '${assignment['subject_code'] ?? ''}';
+                    final semester = '${assignment['semester'] ?? '-'}';
+                    final division = '${assignment['division'] ?? '-'}';
+                    final status = '${assignment['status'] ?? 'Pending'}';
+                    final pending = status.toLowerCase() == 'pending';
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 7),
+                      clipBehavior: Clip.antiAlias,
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: colors.primaryContainer,
+                                  child: Icon(
+                                    Icons.menu_book_outlined,
+                                    color: colors.onPrimaryContainer,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(code),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _statusColor(
+                                      status,
+                                      colors,
+                                    ).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    status,
+                                    style: TextStyle(
+                                      color: _statusColor(status, colors),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Wrap(
+                              spacing: 16,
+                              runSpacing: 8,
+                              children: [
+                                Text('Semester $semester'),
+                                Text('Division $division'),
+                              ],
+                            ),
+                            if (pending) ...[
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: _updating
+                                          ? null
+                                          : () => _updateStatus(
+                                              assignment,
+                                              'Rejected',
+                                            ),
+                                      icon: const Icon(Icons.close),
+                                      label: const Text('Reject'),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: colors.error,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: _updating
+                                          ? null
+                                          : () => _updateStatus(
+                                              assignment,
+                                              'Accepted',
+                                            ),
+                                      icon: const Icon(Icons.check),
+                                      label: const Text('Accept'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
-          ],
-        ],
-      ),
     );
-  }
-
-  Widget _metricCard(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value,
-  ) {
-    final primary = Theme.of(context).colorScheme.primary;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withValues(alpha: .55),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 16, color: primary),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.w800,
-              letterSpacing: .6,
-            ),
-          ),
-          const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ClassroomGeofencePainter extends CustomPainter {
-  final double length;
-  final double width;
-  final Color primary;
-  final bool verified;
-  final double? accuracy;
-
-  ClassroomGeofencePainter({
-    required this.length,
-    required this.width,
-    required this.primary,
-    required this.verified,
-    required this.accuracy,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final safeLength = length > 0 ? length : 1.0;
-    final safeWidth = width > 0 ? width : 1.0;
-    final ratio = safeLength / safeWidth;
-
-    // Deliberately reserve space around every side. This prevents N/S/E/W
-    // and measurement labels from touching the classroom rectangle.
-    const leftSpace = 74.0;
-    const rightSpace = 52.0;
-    const topSpace = 42.0;
-    const bottomSpace = 54.0;
-
-    final availableWidth = max(80.0, size.width - leftSpace - rightSpace);
-    final availableHeight = max(70.0, size.height - topSpace - bottomSpace);
-
-    double rectWidth = availableWidth;
-    double rectHeight = rectWidth / ratio;
-
-    if (rectHeight > availableHeight) {
-      rectHeight = availableHeight;
-      rectWidth = rectHeight * ratio;
-    }
-
-    rectWidth = max(80.0, rectWidth);
-    rectHeight = max(54.0, rectHeight);
-
-    final rect = Rect.fromCenter(
-      center: Offset(
-        leftSpace + (availableWidth / 2),
-        topSpace + (availableHeight / 2),
-      ),
-      width: rectWidth,
-      height: rectHeight,
-    );
-
-    final boundaryColor = verified ? Colors.green.shade600 : primary;
-
-    final fillPaint = Paint()
-      ..color = boundaryColor.withValues(alpha: .075)
-      ..style = PaintingStyle.fill;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(14)),
-      fillPaint,
-    );
-
-    final borderPaint = Paint()
-      ..color = boundaryColor
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(14)),
-      borderPaint,
-    );
-
-    final center = rect.center;
-    final centerPaint = Paint()
-      ..color = boundaryColor
-      ..style = PaintingStyle.fill;
-
-    if (accuracy != null && accuracy! > 0) {
-      final accuracyRadius = max(
-        12.0,
-        min(rect.shortestSide * .20, accuracy! * 2.0),
-      );
-      final ringPaint = Paint()
-        ..color = boundaryColor.withValues(alpha: .12)
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(center, accuracyRadius, ringPaint);
-    }
-
-    canvas.drawCircle(center, 7, centerPaint);
-
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
-    );
-
-    void drawText(
-      String text,
-      Offset centerPoint, {
-      double fontSize = 10,
-      FontWeight weight = FontWeight.w700,
-      Color? color,
-    }) {
-      textPainter.text = TextSpan(
-        text: text,
-        style: TextStyle(
-          color: color ?? primary,
-          fontSize: fontSize,
-          fontWeight: weight,
-        ),
-      );
-      textPainter.layout();
-      textPainter.paint(
-        canvas,
-        Offset(
-          centerPoint.dx - textPainter.width / 2,
-          centerPoint.dy - textPainter.height / 2,
-        ),
-      );
-    }
-
-    void drawPill(String text, Offset centerPoint) {
-      textPainter.text = TextSpan(
-        text: text,
-        style: TextStyle(
-          color: boundaryColor,
-          fontSize: 9,
-          fontWeight: FontWeight.w900,
-        ),
-      );
-      textPainter.layout();
-      final pill = RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: centerPoint,
-          width: textPainter.width + 16,
-          height: 22,
-        ),
-        const Radius.circular(11),
-      );
-      final paint = Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.fill;
-      canvas.drawRRect(pill, paint);
-      final border = Paint()
-        ..color = boundaryColor.withValues(alpha: .25)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1;
-      canvas.drawRRect(pill, border);
-      textPainter.paint(
-        canvas,
-        Offset(
-          centerPoint.dx - textPainter.width / 2,
-          centerPoint.dy - textPainter.height / 2,
-        ),
-      );
-    }
-
-    // Direction markers are deliberately outside the classroom boundary.
-    drawPill('N', Offset(center.dx, rect.top - 28));
-    drawPill('S', Offset(center.dx, rect.bottom + 28));
-    drawPill('W', Offset(rect.left - 36, center.dy));
-    drawPill('E', Offset(rect.right + 26, center.dy));
-
-    // Length measurement: below the classroom, independent from S marker.
-    final dimensionPaint = Paint()
-      ..color = boundaryColor.withValues(alpha: .55)
-      ..strokeWidth = 1.2;
-    final lengthY = min(size.height - 13, rect.bottom + 39);
-
-    canvas.drawLine(
-      Offset(rect.left, lengthY),
-      Offset(rect.right, lengthY),
-      dimensionPaint,
-    );
-    canvas.drawLine(
-      Offset(rect.left, lengthY - 4),
-      Offset(rect.left, lengthY + 4),
-      dimensionPaint,
-    );
-    canvas.drawLine(
-      Offset(rect.right, lengthY - 4),
-      Offset(rect.right, lengthY + 4),
-      dimensionPaint,
-    );
-    drawText(
-      'Length  ${safeLength.toStringAsFixed(1)} m',
-      Offset(center.dx, lengthY + 10),
-      fontSize: 9,
-      weight: FontWeight.w800,
-    );
-
-    // Width measurement: left of the classroom, independent from W marker.
-    final widthX = max(30.0, rect.left - 55);
-    canvas.drawLine(
-      Offset(widthX, rect.top),
-      Offset(widthX, rect.bottom),
-      dimensionPaint,
-    );
-    canvas.drawLine(
-      Offset(widthX - 4, rect.top),
-      Offset(widthX + 4, rect.top),
-      dimensionPaint,
-    );
-    canvas.drawLine(
-      Offset(widthX - 4, rect.bottom),
-      Offset(widthX + 4, rect.bottom),
-      dimensionPaint,
-    );
-
-    canvas.save();
-    canvas.translate(widthX - 13, center.dy);
-    canvas.rotate(-pi / 2);
-    drawText(
-      'Width  ${safeWidth.toStringAsFixed(1)} m',
-      Offset.zero,
-      fontSize: 9,
-      weight: FontWeight.w800,
-    );
-    canvas.restore();
-
-    // Centre marker label sits inside the rectangle with a dedicated pill.
-    drawPill('CLASSROOM CENTRE', Offset(center.dx, center.dy + 32));
-  }
-
-  @override
-  bool shouldRepaint(covariant ClassroomGeofencePainter oldDelegate) {
-    return oldDelegate.length != length ||
-        oldDelegate.width != width ||
-        oldDelegate.primary != primary ||
-        oldDelegate.verified != verified ||
-        oldDelegate.accuracy != accuracy;
   }
 }
 
@@ -2204,48 +2122,65 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
   Duration _remainingTime = Duration.zero;
 
   Timer? _countdownTimer;
-  Timer? _attendanceRefreshTimer;
-
-  int _livePresentCount = 0;
-  int _liveLateCount = 0;
-  int _liveRejectedCount = 0;
-  int _liveTotalStudents = 0;
-  bool _attendanceRefreshing = false;
-  DateTime? _lastAttendanceRefresh;
-  List<Map<String, dynamic>> _liveRecentActivity = [];
 
   String _statusMessage = 'No attendance session is active.';
 
   @override
   void dispose() {
     _countdownTimer?.cancel();
-    _attendanceRefreshTimer?.cancel();
     super.dispose();
   }
 
   // ==========================================================
   // LOCATION
   // ==========================================================
+  Position _createStabilizedPosition(List<Position> readings) {
+    final latitudes = readings.map((p) => p.latitude).toList()..sort();
+    final longitudes = readings.map((p) => p.longitude).toList()..sort();
+    final accuracies = readings.map((p) => p.accuracy).toList()..sort();
+
+    // 4 readings ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ median is average of the 2 middle values.
+    final double medianLatitude = (latitudes[1] + latitudes[2]) / 2.0;
+
+    final double medianLongitude = (longitudes[1] + longitudes[2]) / 2.0;
+
+    final double medianAccuracy = (accuracies[1] + accuracies[2]) / 2.0;
+
+    final Position base = readings.first;
+
+    return Position(
+      latitude: medianLatitude,
+      longitude: medianLongitude,
+      timestamp: base.timestamp,
+      accuracy: medianAccuracy,
+      altitude: base.altitude,
+      altitudeAccuracy: base.altitudeAccuracy,
+      heading: base.heading,
+      headingAccuracy: base.headingAccuracy,
+      speed: base.speed,
+      speedAccuracy: base.speedAccuracy,
+      floor: base.floor,
+      isMocked: false,
+    );
+  }
 
   Future<Position?> _getCurrentLocation() async {
-    const int requiredReadings = 5;
+    return _captureStableTeacherLocation((_, __) {});
+  }
 
-    // Maximum acceptable reported GPS accuracy.
-    // Readings worse than this are ignored.
-    const double maxAccuracyMeters = 15.0;
-
-    final List<Position> readings = [];
+  Future<Position?> _captureStableTeacherLocation(
+    void Function(int completed, int total) onProgress,
+  ) async {
+    const int requiredReadings = 10;
 
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
     if (!serviceEnabled) {
-      if (mounted) {
-        _showMessage('Please enable location services.');
-      }
+      debugPrint('FACULTY GPS: Location service disabled.');
       return null;
     }
 
-    var permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
 
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -2253,219 +2188,89 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
 
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      if (mounted) {
-        _showMessage('Location permission is required.');
-      }
+      debugPrint('FACULTY GPS: Location permission denied.');
       return null;
     }
 
-    if (mounted) {
-      _showMessage(
-        'Getting accurate teacher location...\n'
-        'Please keep the phone still.',
-      );
-    }
+    final List<Position> readings = <Position>[];
+    StreamSubscription<Position>? subscription;
+    final Completer<Position?> completer = Completer<Position?>();
 
-    // ----------------------------------------------------------
-    // COLLECT 5 GPS READINGS
-    // ----------------------------------------------------------
+    const LocationSettings settings = LocationSettings(
+      accuracy: LocationAccuracy.bestForNavigation,
+      distanceFilter: 0,
+    );
 
-    for (int i = 0; i < requiredReadings; i++) {
-      try {
-        if (mounted) {
-          _showMessage(
-            'Getting teacher GPS reading ${i + 1}/$requiredReadings...\n'
-            'Please keep the phone still.',
-          );
-        }
+    subscription = Geolocator.getPositionStream(locationSettings: settings)
+        .listen(
+          (Position position) async {
+            if (readings.length >= requiredReadings) {
+              return;
+            }
 
-        final Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.bestForNavigation,
-        );
+            if (position.isMocked) {
+              debugPrint('FACULTY GPS: Mocked reading ignored.');
+              return;
+            }
 
-        print(
-          'FACULTY GPS READING ${i + 1}: '
-          'lat=${position.latitude}, '
-          'lon=${position.longitude}, '
-          'accuracy=${position.accuracy}, '
-          'mocked=${position.isMocked}',
-        );
+            if (!position.latitude.isFinite ||
+                !position.longitude.isFinite ||
+                !position.accuracy.isFinite ||
+                position.accuracy <= 0) {
+              debugPrint('FACULTY GPS: Invalid reading ignored.');
+              return;
+            }
 
-        // --------------------------------------------------------
-        // MOCK LOCATION CHECK
-        // --------------------------------------------------------
+            readings.add(position);
+            onProgress(readings.length, requiredReadings);
 
-        if (position.isMocked) {
-          print(
-            'FACULTY GPS READING ${i + 1}: '
-            'REJECTED - MOCK LOCATION',
-          );
-
-          if (mounted) {
-            _showMessage(
-              'Mock location detected.\n'
-              'Teacher location rejected.',
+            debugPrint(
+              'FACULTY GPS: usable ${readings.length}/$requiredReadings '
+              'lat=${position.latitude}, '
+              'lon=${position.longitude}, '
+              'accuracy=${position.accuracy}',
             );
-          }
 
-          return null;
-        }
+            if (readings.length == requiredReadings) {
+              await subscription?.cancel();
 
-        // --------------------------------------------------------
-        // BASIC VALIDITY CHECK
-        // --------------------------------------------------------
+              readings.sort((a, b) => a.accuracy.compareTo(b.accuracy));
 
-        if (!position.latitude.isFinite ||
-            !position.longitude.isFinite ||
-            !position.accuracy.isFinite) {
-          print(
-            'FACULTY GPS READING ${i + 1}: '
-            'REJECTED - INVALID DATA',
-          );
-          continue;
-        }
+              final List<Position> bestFour = readings.take(4).toList();
 
-        // --------------------------------------------------------
-        // ACCURACY CHECK
-        // --------------------------------------------------------
+              final Position stabilized = _createStabilizedPosition(bestFour);
 
-        if (position.accuracy <= 0 || position.accuracy > maxAccuracyMeters) {
-          print(
-            'FACULTY GPS READING ${i + 1}: '
-            'REJECTED - ACCURACY ${position.accuracy}m',
-          );
-          continue;
-        }
+              debugPrint(
+                'FACULTY GPS STABILIZED: '
+                '${stabilized.latitude}, '
+                '${stabilized.longitude}, '
+                'accuracy=${stabilized.accuracy}',
+              );
 
-        readings.add(position);
+              if (!completer.isCompleted) {
+                completer.complete(stabilized);
+              }
+            }
+          },
+          onError: (Object error) async {
+            debugPrint('FACULTY GPS STREAM ERROR: $error');
+            await subscription?.cancel();
 
-        if (mounted) {
-          _showMessage(
-            'Teacher GPS reading ${i + 1}/$requiredReadings captured.\n'
-            'Accuracy: ${position.accuracy.toStringAsFixed(1)} m',
-          );
-        }
-
-        // Small delay allows the GPS subsystem to obtain
-        // a fresh measurement instead of repeatedly using
-        // the same cached position.
-        if (i < requiredReadings - 1) {
-          await Future.delayed(const Duration(milliseconds: 800));
-        }
-      } catch (e) {
-        print('FACULTY GPS READING ${i + 1}: ERROR $e');
-
-        continue;
-      }
-    }
-
-    // ----------------------------------------------------------
-    // REQUIRE ENOUGH VALID READINGS
-    // ----------------------------------------------------------
-
-    if (readings.length < 3) {
-      if (mounted) {
-        _showMessage(
-          'Unable to obtain enough accurate GPS readings.\n'
-          'Please move to an area with better GPS reception '
-          'and try again.',
+            if (!completer.isCompleted) {
+              completer.complete(null);
+            }
+          },
+          cancelOnError: false,
         );
-      }
 
-      return null;
-    }
-
-    // ----------------------------------------------------------
-    // CALCULATE WEIGHTED STABLE LOCATION
-    // ----------------------------------------------------------
-    //
-    // More accurate readings get more weight.
-    //
-    // weight = 1 / accuracy²
-    //
-    // Therefore a 5m reading contributes more than a 10m
-    // reading.
-    // ----------------------------------------------------------
-
-    double weightedLatitude = 0.0;
-    double weightedLongitude = 0.0;
-    double totalWeight = 0.0;
-
-    for (final Position position in readings) {
-      final double accuracy = position.accuracy.clamp(1.0, 100.0);
-
-      final double weight = 1.0 / (accuracy * accuracy);
-
-      weightedLatitude += position.latitude * weight;
-      weightedLongitude += position.longitude * weight;
-
-      totalWeight += weight;
-    }
-
-    if (totalWeight <= 0) {
-      if (mounted) {
-        _showMessage('Could not calculate a stable teacher location.');
-      }
-
-      return null;
-    }
-
-    final double stableLatitude = weightedLatitude / totalWeight;
-
-    final double stableLongitude = weightedLongitude / totalWeight;
-
-    // ----------------------------------------------------------
-    // CALCULATE AVERAGE GPS ACCURACY
-    // ----------------------------------------------------------
-
-    double totalAccuracy = 0.0;
-
-    for (final Position position in readings) {
-      totalAccuracy += position.accuracy;
-    }
-
-    final double averageAccuracy = totalAccuracy / readings.length;
-
-    print(
-      'FACULTY STABLE LOCATION: '
-      'lat=$stableLatitude, '
-      'lon=$stableLongitude, '
-      'validReadings=${readings.length}, '
-      'averageAccuracy=${averageAccuracy.toStringAsFixed(2)}m',
-    );
-
-    if (mounted) {
-      _showMessage(
-        'Teacher location confirmed.\n'
-        '${readings.length} accurate readings used.\n'
-        'Average accuracy: '
-        '${averageAccuracy.toStringAsFixed(1)} m',
-      );
-    }
-
-    // Return the calculated stable coordinate.
-    //
-    // We use the best available reading as the Position object
-    // template and replace its latitude/longitude with the
-    // calculated stable coordinates.
-    final Position reference = readings.reduce(
-      (a, b) => a.accuracy <= b.accuracy ? a : b,
-    );
-
-    return Position(
-      longitude: stableLongitude,
-      latitude: stableLatitude,
-      timestamp: DateTime.now(),
-      accuracy: averageAccuracy,
-      altitude: reference.altitude,
-      altitudeAccuracy: reference.altitudeAccuracy,
-      heading: reference.heading,
-      headingAccuracy: reference.headingAccuracy,
-      speed: reference.speed,
-      speedAccuracy: reference.speedAccuracy,
-    );
+    return completer.future;
   }
 
+  Future<Position?> captureStableTeacherLocation(
+    void Function(int completed, int total) onProgress,
+  ) async {
+    return _captureStableTeacherLocation(onProgress);
+  }
   // ==========================================================
   // CREATE SESSION DIALOG
   // ==========================================================
@@ -2480,981 +2285,676 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     final semesterController = TextEditingController();
     final divisionController = TextEditingController();
     final durationController = TextEditingController(text: '10');
+
+    // NEW: classroom dimensions instead of radius.
     final lengthController = TextEditingController();
     final widthController = TextEditingController();
 
     bool gettingLocation = false;
+
     Position? stableLocation;
+
     String error = '';
-    int currentStep = 0;
 
-    Future<Position?> captureStableTeacherLocation(
-      void Function(int completed, int total) onProgress,
-    ) async {
-      const int requiredReadings = 5;
-      const double maximumAcceptedAccuracy = 20.0;
+    List<Map<String, dynamic>> acceptedAssignments = [];
+    Map<String, dynamic>? selectedAssignment;
+    bool assignmentsLoading = true;
+    bool assignmentsLoadStarted = false;
+    String assignmentError = '';
 
-      try {
-        final readings = <Position>[];
-
-        // --------------------------------------------------------
-        // COLLECT 5 READINGS IN PARALLEL
-        // --------------------------------------------------------
-        //
-        // This avoids unnecessarily waiting for five complete
-        // sequential GPS acquisition cycles.
-        //
-        final futures = List.generate(requiredReadings, (_) async {
-          try {
-            final position = await Geolocator.getCurrentPosition(
-              desiredAccuracy: LocationAccuracy.bestForNavigation,
-            );
-
-            return position;
-          } catch (e) {
-            debugPrint('TEACHER GPS READING ERROR: $e');
-            return null;
-          }
-        });
-
-        final results = await Future.wait(futures);
-
-        // --------------------------------------------------------
-        // VALIDATE READINGS
-        // --------------------------------------------------------
-
-        for (final position in results) {
-          onProgress(readings.length + 1, requiredReadings);
-
-          if (position == null) {
-            continue;
-          }
-
-          debugPrint(
-            'TEACHER GPS READING: '
-            'lat=${position.latitude}, '
-            'lon=${position.longitude}, '
-            'accuracy=${position.accuracy}, '
-            'mocked=${position.isMocked}',
-          );
-
-          // Mock/fake GPS protection.
-          if (position.isMocked) {
-            debugPrint('MOCK GPS DETECTED - TEACHER LOCATION REJECTED');
-
-            return null;
-          }
-
-          // Coordinate validation.
-          if (!position.latitude.isFinite ||
-              !position.longitude.isFinite ||
-              !position.accuracy.isFinite) {
-            continue;
-          }
-
-          if (position.latitude < -90 ||
-              position.latitude > 90 ||
-              position.longitude < -180 ||
-              position.longitude > 180) {
-            continue;
-          }
-
-          // Accuracy validation.
-          if (position.accuracy <= 0 ||
-              position.accuracy > maximumAcceptedAccuracy) {
-            continue;
-          }
-
-          readings.add(position);
-        }
-
-        // We require all five readings to be valid.
-        if (readings.length < requiredReadings) {
-          debugPrint(
-            'TEACHER GPS FAILED: '
-            '${readings.length}/$requiredReadings valid readings',
-          );
-
-          return null;
-        }
-
-        // --------------------------------------------------------
-        // CHECK FOR EXCESSIVE GPS INSTABILITY
-        // --------------------------------------------------------
-        //
-        // Calculate the approximate spread of the readings.
-        // A very large spread indicates unstable GPS.
-        //
-
-        double minLatitude = readings.first.latitude;
-        double maxLatitude = readings.first.latitude;
-        double minLongitude = readings.first.longitude;
-        double maxLongitude = readings.first.longitude;
-
-        for (final position in readings) {
-          if (position.latitude < minLatitude) {
-            minLatitude = position.latitude;
-          }
-
-          if (position.latitude > maxLatitude) {
-            maxLatitude = position.latitude;
-          }
-
-          if (position.longitude < minLongitude) {
-            minLongitude = position.longitude;
-          }
-
-          if (position.longitude > maxLongitude) {
-            maxLongitude = position.longitude;
-          }
-        }
-
-        // Approximate metres per degree.
-        const double metersPerLatitudeDegree = 111320.0;
-
-        final latitudeSpreadMeters =
-            (maxLatitude - minLatitude).abs() * metersPerLatitudeDegree;
-
-        final averageLatitude =
-            readings
-                .map((position) => position.latitude)
-                .reduce((a, b) => a + b) /
-            readings.length;
-
-        final longitudeMetersPerDegree =
-            metersPerLatitudeDegree * cos(averageLatitude * pi / 180.0);
-
-        final longitudeSpreadMeters =
-            (maxLongitude - minLongitude).abs() * longitudeMetersPerDegree;
-
-        final maximumSpread = max(latitudeSpreadMeters, longitudeSpreadMeters);
-
-        debugPrint(
-          'TEACHER GPS SPREAD: '
-          '${maximumSpread.toStringAsFixed(2)} m',
-        );
-
-        // If readings are extremely far apart, GPS is unstable.
-        if (maximumSpread > 40.0) {
-          debugPrint('TEACHER GPS FAILED: unstable location');
-
-          return null;
-        }
-
-        // --------------------------------------------------------
-        // ACCURACY-WEIGHTED CENTER
-        // --------------------------------------------------------
-        //
-        // Weight = 1 / accuracy²
-        //
-        // Example:
-        // 5m accuracy gets significantly more influence than
-        // 15m accuracy.
-        //
-
-        double weightedLatitude = 0;
-        double weightedLongitude = 0;
-        double totalWeight = 0;
-
-        for (final position in readings) {
-          final accuracy = max(position.accuracy, 1.0);
-
-          final weight = 1.0 / (accuracy * accuracy);
-
-          weightedLatitude += position.latitude * weight;
-
-          weightedLongitude += position.longitude * weight;
-
-          totalWeight += weight;
-        }
-
-        if (totalWeight <= 0) {
-          return null;
-        }
-
-        final finalLatitude = weightedLatitude / totalWeight;
-
-        final finalLongitude = weightedLongitude / totalWeight;
-
-        // Use the most accurate reading as the template for
-        // the resulting Position object.
-        final bestReading = readings.reduce(
-          (a, b) => a.accuracy <= b.accuracy ? a : b,
-        );
-
-        final stablePosition = Position(
-          latitude: finalLatitude,
-          longitude: finalLongitude,
-          timestamp: bestReading.timestamp,
-          accuracy: bestReading.accuracy,
-          altitude: bestReading.altitude,
-          altitudeAccuracy: bestReading.altitudeAccuracy,
-          heading: bestReading.heading,
-          headingAccuracy: bestReading.headingAccuracy,
-          speed: bestReading.speed,
-          speedAccuracy: bestReading.speedAccuracy,
-          floor: bestReading.floor,
-          isMocked: bestReading.isMocked,
-        );
-
-        debugPrint(
-          'STABLE TEACHER LOCATION: '
-          'lat=${stablePosition.latitude}, '
-          'lon=${stablePosition.longitude}, '
-          'accuracy=${stablePosition.accuracy}',
-        );
-
-        return stablePosition;
-      } catch (e) {
-        debugPrint('STABLE TEACHER LOCATION ERROR: $e');
-
-        return null;
-      }
+    void applyAssignment(Map<String, dynamic> assignment) {
+      selectedAssignment = assignment;
+      subjectNameController.text = (assignment['subject_name'] ?? '')
+          .toString();
+      subjectCodeController.text = (assignment['subject_code'] ?? '')
+          .toString();
+      semesterController.text = (assignment['semester'] ?? '').toString();
+      divisionController.text = (assignment['division'] ?? '').toString();
     }
 
-    bool validateClassStep(void Function(void Function()) setDialogState) {
-      final subject = subjectNameController.text.trim();
-      final code = subjectCodeController.text.trim();
-      final semester = semesterController.text.trim();
-      final division = divisionController.text.trim();
-      final duration = int.tryParse(durationController.text.trim());
+    // ==========================================================
+    // FAST STABLE TEACHER LOCATION
+    // ==========================================================
+    //
+    // Collects 5 high-accuracy GPS readings concurrently.
+    //
+    // Security:
+    // - Rejects mocked/fake GPS.
+    // - Rejects invalid coordinates.
+    // - Rejects invalid accuracy values.
+    // - Rejects readings worse than 20 metres.
+    //
+    // Accuracy-weighted averaging gives better readings more
+    // influence when calculating the classroom centre.
+    //
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogBuildContext, setDialogState) {
+            // ==================================================
+            if (!assignmentsLoadStarted) {
+              assignmentsLoadStarted = true;
 
-      if (subject.isEmpty) {
-        setDialogState(() => error = 'Enter the subject name.');
-        return false;
-      }
-      if (code.isEmpty) {
-        setDialogState(() => error = 'Enter the subject code.');
-        return false;
-      }
-      if (semester.isEmpty || int.tryParse(semester) == null) {
-        setDialogState(() => error = 'Enter a valid semester number.');
-        return false;
-      }
-      if (division.isEmpty) {
-        setDialogState(() => error = 'Enter the division.');
-        return false;
-      }
-      if (duration == null || duration < 1 || duration > 240) {
-        setDialogState(
-          () => error = 'Duration must be between 1 and 240 minutes.',
-        );
-        return false;
-      }
-      setDialogState(() => error = '');
-      return true;
-    }
+              Future<void>(() async {
+                try {
+                  final headers = await _getAuthenticatedHeaders();
 
-    bool validateClassroomStep(void Function(void Function()) setDialogState) {
-      final length = double.tryParse(lengthController.text.trim());
-      final width = double.tryParse(widthController.text.trim());
+                  if (headers == null) {
+                    throw Exception(
+                      'Login session expired. Please log in again.',
+                    );
+                  }
 
-      if (length == null || length <= 0 || length > 500) {
-        setDialogState(
-          () => error = 'Classroom length must be between 0 and 500 metres.',
-        );
-        return false;
-      }
-      if (width == null || width <= 0 || width > 500) {
-        setDialogState(
-          () => error = 'Classroom width must be between 0 and 500 metres.',
-        );
-        return false;
-      }
-      setDialogState(() => error = '');
-      return true;
-    }
+                  final response = await http.get(
+                    Uri.parse('$backendUrl/api/assignments/faculty'),
+                    headers: headers,
+                  );
 
-    try {
-      await showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) {
-          return StatefulBuilder(
-            builder: (dialogBuildContext, setDialogState) {
-              Future<void> captureLocation() async {
-                if (gettingLocation) return;
+                  if (response.statusCode != 200) {
+                    throw Exception(
+                      'Assignment request failed: HTTP ${response.statusCode}',
+                    );
+                  }
 
-                setDialogState(() {
-                  gettingLocation = true;
-                  error = '';
-                  stableLocation = null;
-                });
+                  final decoded = jsonDecode(response.body);
 
-                final capturedLocation = await captureStableTeacherLocation((
-                  completed,
-                  total,
-                ) {
+                  if (decoded is! Map<String, dynamic> ||
+                      decoded['success'] != true) {
+                    throw Exception('Unexpected assignment response.');
+                  }
+
+                  final results = <Map<String, dynamic>>[];
+                  final rows = decoded['assignments'];
+
+                  if (rows is List) {
+                    for (final row in rows) {
+                      if (row is Map) {
+                        final item = Map<String, dynamic>.from(row);
+                        final status = (item['status'] ?? '')
+                            .toString()
+                            .trim()
+                            .toLowerCase();
+
+                        if (status == 'accepted') {
+                          results.add(item);
+                        }
+                      }
+                    }
+                  }
+
                   if (!dialogBuildContext.mounted) return;
-                  setDialogState(() {
-                    error =
-                        'Verifying classroom centre...\nGPS reading $completed of $total';
-                  });
-                });
 
-                if (!dialogBuildContext.mounted) return;
-
-                if (capturedLocation == null) {
                   setDialogState(() {
-                    gettingLocation = false;
-                    stableLocation = null;
-                    error =
-                        'Location verification failed.\nMove to the classroom centre, enable GPS, and ensure mock location is disabled.';
+                    acceptedAssignments = results;
+                    assignmentsLoading = false;
+                    assignmentError = '';
+
+                    if (results.length == 1) {
+                      applyAssignment(results.first);
+                    }
                   });
+                } catch (e) {
+                  if (!dialogBuildContext.mounted) return;
+
+                  setDialogState(() {
+                    assignmentsLoading = false;
+                    assignmentError = 'Unable to load subjects: $e';
+                  });
+                }
+              });
+            }
+            // START LOCATION CAPTURE
+            // ==================================================
+
+            Future<void> captureLocation() async {
+              if (gettingLocation) {
+                return;
+              }
+
+              setDialogState(() {
+                gettingLocation = true;
+                error = '';
+                stableLocation = null;
+              });
+
+              final capturedLocation = await captureStableTeacherLocation((
+                completed,
+                total,
+              ) {
+                if (!dialogBuildContext.mounted) {
                   return;
                 }
 
-                stableLocation = capturedLocation;
+                setDialogState(() {
+                  error =
+                      'Getting accurate classroom centre...\n'
+                      'GPS reading $completed of $total';
+                });
+              });
+
+              if (!dialogBuildContext.mounted) {
+                return;
+              }
+
+              if (capturedLocation == null) {
                 setDialogState(() {
                   gettingLocation = false;
-                  error = '';
+                  stableLocation = null;
+                  error =
+                      'Could not obtain 10 reliable GPS readings.\n'
+                      'Make sure GPS is enabled and mock location is disabled.';
                 });
+
+                return;
               }
 
-              final double? classroomLength = double.tryParse(
-                lengthController.text.trim(),
-              );
-              final double? classroomWidth = double.tryParse(
-                widthController.text.trim(),
-              );
-              final double area =
-                  (classroomLength ?? 0) * (classroomWidth ?? 0);
+              stableLocation = capturedLocation;
 
-              Widget stepIndicator() {
-                const labels = ['Class', 'Classroom', 'Security'];
-                return Row(
-                  children: List.generate(labels.length, (index) {
-                    final active = index == currentStep;
-                    final completed =
-                        index < currentStep ||
-                        (index == 2 && stableLocation != null);
-                    return Expanded(
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              if (index > 0)
-                                Expanded(
-                                  child: Container(
-                                    height: 2,
-                                    color: index <= currentStep
-                                        ? Theme.of(
-                                            dialogBuildContext,
-                                          ).colorScheme.primary
-                                        : Theme.of(
-                                            dialogBuildContext,
-                                          ).dividerColor,
-                                  ),
-                                ),
-                              Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: active || completed
-                                      ? Theme.of(
-                                          dialogBuildContext,
-                                        ).colorScheme.primary
-                                      : Theme.of(
-                                          dialogBuildContext,
-                                        ).colorScheme.surfaceContainerHighest,
-                                ),
-                                child: Icon(
-                                  completed && !active
-                                      ? Icons.check
-                                      : Icons.circle,
-                                  size: completed && !active ? 18 : 10,
-                                  color: active || completed
-                                      ? Theme.of(
-                                          dialogBuildContext,
-                                        ).colorScheme.onPrimary
-                                      : Theme.of(
-                                          dialogBuildContext,
-                                        ).colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              if (index < labels.length - 1)
-                                Expanded(
-                                  child: Container(
-                                    height: 2,
-                                    color: index < currentStep
-                                        ? Theme.of(
-                                            dialogBuildContext,
-                                          ).colorScheme.primary
-                                        : Theme.of(
-                                            dialogBuildContext,
-                                          ).dividerColor,
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            labels[index],
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: active
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              color: active
-                                  ? Theme.of(
-                                      dialogBuildContext,
-                                    ).colorScheme.primary
-                                  : Theme.of(
-                                      dialogBuildContext,
-                                    ).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                );
-              }
+              setDialogState(() {
+                gettingLocation = false;
+                error =
+                    'Location verified ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“';
+              });
+            }
 
-              Widget sectionHeader(
-                IconData icon,
-                String title,
-                String subtitle,
-              ) {
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    color: Theme.of(
-                      dialogBuildContext,
-                    ).colorScheme.surfaceContainerHighest,
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        icon,
-                        color: Theme.of(dialogBuildContext).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+            return AlertDialog(
+              title: const Text('Create Attendance Session'),
+
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // ==================================================
+                    // SUBJECT ASSIGNMENT DROPDOWN
+                    if (assignmentsLoading)
+                      const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Row(
                           children: [
-                            Text(
-                              title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             ),
-                            const SizedBox(height: 3),
-                            Text(
-                              subtitle,
-                              style: TextStyle(
-                                color: Theme.of(
-                                  dialogBuildContext,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text('Loading accepted subjects...'),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              }
+                      )
+                    else if (assignmentError.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Text(
+                          assignmentError,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      )
+                    else if (acceptedAssignments.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(8),
+                        child: Text(
+                          'No accepted subject assignments found. '
+                          'Ask your administrator to assign a subject, '
+                          'then accept the assignment.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      )
+                    else
+                      DropdownButtonFormField<Map<String, dynamic>>(
+                        value: selectedAssignment,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Select Accepted Subject',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.book),
+                        ),
+                        items: acceptedAssignments.map((assignment) {
+                          final name = (assignment['subject_name'] ?? '')
+                              .toString();
+                          final code = (assignment['subject_code'] ?? '')
+                              .toString();
+                          final semester = (assignment['semester'] ?? '')
+                              .toString();
+                          final division = (assignment['division'] ?? '')
+                              .toString();
 
-              Widget classStep() {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    sectionHeader(
-                      Icons.menu_book_rounded,
-                      'Class details',
-                      'Tell AntiProxy which class is being recorded.',
-                    ),
-                    const SizedBox(height: 14),
+                          return DropdownMenuItem<Map<String, dynamic>>(
+                            value: assignment,
+                            child: Text(
+                              '$name ($code) - Semester $semester, Division $division',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (assignment) {
+                          if (assignment == null) return;
+
+                          setDialogState(() {
+                            applyAssignment(assignment);
+                            error = '';
+                          });
+                        },
+                      ),
+
+                    const SizedBox(height: 12),
+
                     TextField(
                       controller: subjectNameController,
+                      readOnly: true,
                       decoration: const InputDecoration(
-                        labelText: 'Subject name',
-                        hintText: 'Data Structures',
-                        prefixIcon: Icon(Icons.book_outlined),
+                        labelText: 'Subject Name',
                         border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.book),
                       ),
                     ),
+
                     const SizedBox(height: 12),
+
                     TextField(
                       controller: subjectCodeController,
-                      textCapitalization: TextCapitalization.characters,
+                      readOnly: true,
                       decoration: const InputDecoration(
-                        labelText: 'Subject code',
-                        hintText: '22UCS113C',
-                        prefixIcon: Icon(Icons.code_rounded),
+                        labelText: 'Subject Code',
                         border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.code),
                       ),
                     ),
+
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: semesterController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'Semester',
-                              hintText: '7',
-                              prefixIcon: Icon(Icons.school_outlined),
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: divisionController,
-                            textCapitalization: TextCapitalization.characters,
-                            decoration: const InputDecoration(
-                              labelText: 'Division',
-                              hintText: 'B',
-                              prefixIcon: Icon(Icons.groups_outlined),
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                      ],
+
+                    TextField(
+                      controller: semesterController,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Semester',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.school),
+                      ),
                     ),
+
                     const SizedBox(height: 12),
+
+                    TextField(
+                      controller: divisionController,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Division',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.groups),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // DURATION
+                    // ==================================================
                     TextField(
                       controller: durationController,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
-                        labelText: 'Session duration (minutes)',
+                        labelText: 'Attendance Duration (minutes)',
                         hintText: '10',
-                        prefixIcon: Icon(Icons.timer_outlined),
                         border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.timer),
                       ),
                     ),
-                  ],
-                );
-              }
 
-              Widget classroomStep() {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    sectionHeader(
-                      Icons.crop_square_rounded,
-                      'Classroom setup',
-                      'The faculty GPS position becomes the centre of this rectangular classroom.',
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: lengthController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Length (m)',
-                              hintText: '8',
-                              prefixIcon: Icon(Icons.straighten_rounded),
-                              border: OutlineInputBorder(),
-                            ),
-                            onChanged: (_) => setDialogState(() {}),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: widthController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: const InputDecoration(
-                              labelText: 'Width (m)',
-                              hintText: '6',
-                              prefixIcon: Icon(Icons.width_normal_rounded),
-                              border: OutlineInputBorder(),
-                            ),
-                            onChanged: (_) => setDialogState(() {}),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    ClassroomGeofencePreview(
-                      length: classroomLength ?? 0,
-                      width: classroomWidth ?? 0,
-                      verified: false,
-                    ),
-                  ],
-                );
-              }
+                    const SizedBox(height: 12),
 
-              Widget securityStep() {
-                final verified = stableLocation != null;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    sectionHeader(
-                      Icons.verified_user_rounded,
-                      'Security verification',
-                      'AntiProxy verifies the classroom centre before generating the attendance QR.',
+                    // ==================================================
+                    // CLASSROOM LENGTH
+                    // ==================================================
+                    TextField(
+                      controller: lengthController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Classroom Length (metres)',
+                        hintText: '10',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.straighten),
+                      ),
                     ),
+
+                    const SizedBox(height: 12),
+
+                    // ==================================================
+                    // CLASSROOM WIDTH
+                    // ==================================================
+                    TextField(
+                      controller: widthController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Classroom Width (metres)',
+                        hintText: '8',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.width_normal),
+                      ),
+                    ),
+
                     const SizedBox(height: 14),
-                    ...[
-                      (
-                        '5-point GPS verification',
-                        'Five accurate readings establish a stable centre.',
-                        Icons.location_searching_rounded,
-                      ),
-                      (
-                        'Mock-location protection',
-                        'Simulated/fake GPS readings are rejected.',
-                        Icons.gps_off_rounded,
-                      ),
-                      (
-                        'Rectangular geofence',
-                        'Students must be inside the configured classroom boundary.',
-                        Icons.crop_square_rounded,
-                      ),
-                      (
-                        'Dynamic QR session',
-                        'The QR is generated only after verification succeeds.',
-                        Icons.qr_code_2_rounded,
-                      ),
-                    ].map((item) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 9),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            color: Theme.of(
-                              dialogBuildContext,
-                            ).colorScheme.surfaceContainerHighest,
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                item.$3,
-                                color: Theme.of(
-                                  dialogBuildContext,
-                                ).colorScheme.primary,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      item.$1,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    Text(
-                                      item.$2,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Theme.of(
-                                          dialogBuildContext,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const Icon(Icons.check_circle_rounded, size: 20),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                    const SizedBox(height: 8),
-                    Container(
+
+                    // ==================================================
+                    // LOCATION BUTTON
+                    // ==================================================
+                    SizedBox(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(18),
-                        color: verified
-                            ? Theme.of(
-                                dialogBuildContext,
-                              ).colorScheme.primaryContainer
-                            : Theme.of(
-                                dialogBuildContext,
-                              ).colorScheme.surfaceContainerHighest,
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            verified
-                                ? Icons.location_on_rounded
-                                : Icons.my_location_rounded,
-                            size: 34,
-                            color: Theme.of(
-                              dialogBuildContext,
-                            ).colorScheme.primary,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            verified
-                                ? 'Classroom centre verified'
-                                : 'Ready to verify classroom centre',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          if (verified)
-                            Text(
-                              'Accuracy ${stableLocation!.accuracy.toStringAsFixed(1)} m\n'
-                              '${stableLocation!.latitude.toStringAsFixed(6)}, ${stableLocation!.longitude.toStringAsFixed(6)}',
-                              textAlign: TextAlign.center,
-                            )
-                          else
-                            const Text(
-                              'Stand at the centre of the classroom and verify your location before starting.',
-                              textAlign: TextAlign.center,
-                            ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: gettingLocation
-                                  ? null
-                                  : captureLocation,
-                              icon: gettingLocation
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : Icon(
-                                      verified
-                                          ? Icons.refresh_rounded
-                                          : Icons.my_location_rounded,
-                                    ),
-                              label: Text(
-                                gettingLocation
-                                    ? 'VERIFYING LOCATION...'
-                                    : verified
-                                    ? 'VERIFY AGAIN'
-                                    : 'VERIFY CLASSROOM CENTRE',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (gettingLocation) ...[
-                      const SizedBox(height: 12),
-                      const LinearProgressIndicator(),
-                    ],
-                  ],
-                );
-              }
-
-              final titles = [
-                'Class details',
-                'Classroom setup',
-                'Security verification',
-              ];
-
-              return AlertDialog(
-                titlePadding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
-                contentPadding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
-                actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                title: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Start Attendance',
-                            style: Theme.of(dialogBuildContext)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Close',
-                          onPressed: gettingLocation
-                              ? null
-                              : () => Navigator.pop(dialogContext),
-                          icon: const Icon(Icons.close_rounded),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      'Step ${currentStep + 1} of 3 • ${titles[currentStep]}',
-                      style: TextStyle(
-                        color: Theme.of(
-                          dialogBuildContext,
-                        ).colorScheme.onSurfaceVariant,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    stepIndicator(),
-                  ],
-                ),
-                content: SizedBox(
-                  width: 520,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 12),
-                        if (currentStep == 0) classStep(),
-                        if (currentStep == 1) classroomStep(),
-                        if (currentStep == 2) securityStep(),
-                        if (error.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              color: gettingLocation
-                                  ? Theme.of(
-                                      dialogBuildContext,
-                                    ).colorScheme.primaryContainer
-                                  : Theme.of(
-                                      dialogBuildContext,
-                                    ).colorScheme.errorContainer,
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  gettingLocation
-                                      ? Icons.sync_rounded
-                                      : Icons.info_outline_rounded,
+                      child: OutlinedButton.icon(
+                        onPressed: gettingLocation ? null : captureLocation,
+                        icon: gettingLocation
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(child: Text(error)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
+                              )
+                            : const Icon(Icons.my_location),
+                        label: Text(
+                          gettingLocation
+                              ? 'COLLECTING GPS READINGS...'
+                              : stableLocation == null
+                              ? 'CAPTURE CLASSROOM CENTRE'
+                              : 'CLASSROOM CENTRE CAPTURED ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“',
+                        ),
+                      ),
                     ),
+
+                    // ==================================================
+                    // STABLE LOCATION INFORMATION
+                    // ==================================================
+                    if (stableLocation != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Classroom Centre\n'
+                          'Lat: ${stableLocation!.latitude.toStringAsFixed(6)}\n'
+                          'Lng: ${stableLocation!.longitude.toStringAsFixed(6)}\n'
+                          'Accuracy: ${stableLocation!.accuracy.toStringAsFixed(1)} m',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+
+                    // ==================================================
+                    // ERROR / PROGRESS
+                    // ==================================================
+                    if (error.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Text(
+                          error,
+                          style: TextStyle(
+                            color: gettingLocation ? Colors.blue : Colors.red,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              // ====================================================
+              // ACTIONS
+              // ====================================================
+              actions: [
+                TextButton(
+                  onPressed: gettingLocation
+                      ? null
+                      : () {
+                          Navigator.pop(dialogContext);
+                        },
+                  child: const Text('CANCEL'),
+                ),
+
+                ElevatedButton.icon(
+                  onPressed:
+                      (gettingLocation ||
+                          assignmentsLoading ||
+                          assignmentError.isNotEmpty ||
+                          selectedAssignment == null)
+                      ? null
+                      : () async {
+                          // --------------------------------------
+                          // READ FORM VALUES
+                          // --------------------------------------
+
+                          final subject = subjectNameController.text.trim();
+
+                          final code = subjectCodeController.text
+                              .trim()
+                              .toUpperCase();
+
+                          final semester = semesterController.text.trim();
+
+                          final division = divisionController.text
+                              .trim()
+                              .toUpperCase();
+
+                          final duration = int.tryParse(
+                            durationController.text.trim(),
+                          );
+
+                          final classroomLength = double.tryParse(
+                            lengthController.text.trim(),
+                          );
+
+                          final classroomWidth = double.tryParse(
+                            widthController.text.trim(),
+                          );
+
+                          // --------------------------------------
+                          // VALIDATION
+                          // --------------------------------------
+
+                          if (subject.isEmpty) {
+                            setDialogState(() {
+                              error = 'Enter subject name.';
+                            });
+                            return;
+                          }
+
+                          if (code.isEmpty) {
+                            setDialogState(() {
+                              error = 'Enter subject code.';
+                            });
+                            return;
+                          }
+
+                          if (semester.isEmpty) {
+                            setDialogState(() {
+                              error = 'Enter semester.';
+                            });
+                            return;
+                          }
+
+                          if (int.tryParse(semester) == null) {
+                            setDialogState(() {
+                              error = 'Semester must be a number.';
+                            });
+                            return;
+                          }
+
+                          if (division.isEmpty) {
+                            setDialogState(() {
+                              error = 'Enter division.';
+                            });
+                            return;
+                          }
+
+                          if (duration == null || duration <= 0) {
+                            setDialogState(() {
+                              error = 'Enter a valid duration.';
+                            });
+                            return;
+                          }
+
+                          // --------------------------------------
+                          // LENGTH VALIDATION
+                          // --------------------------------------
+
+                          if (classroomLength == null || classroomLength <= 0) {
+                            setDialogState(() {
+                              error = 'Enter a valid classroom length.';
+                            });
+                            return;
+                          }
+
+                          if (classroomLength > 500) {
+                            setDialogState(() {
+                              error =
+                                  'Classroom length cannot exceed 500 metres.';
+                            });
+                            return;
+                          }
+
+                          // --------------------------------------
+                          // WIDTH VALIDATION
+                          // --------------------------------------
+
+                          if (classroomWidth == null || classroomWidth <= 0) {
+                            setDialogState(() {
+                              error = 'Enter a valid classroom width.';
+                            });
+                            return;
+                          }
+
+                          if (classroomWidth > 500) {
+                            setDialogState(() {
+                              error =
+                                  'Classroom width cannot exceed 500 metres.';
+                            });
+                            return;
+                          }
+
+                          // --------------------------------------
+                          // COLLECT 10 GPS READINGS
+                          // --------------------------------------
+
+                          setDialogState(() {
+                            gettingLocation = true;
+                            error =
+                                'Collecting 10 high-accuracy GPS readings...';
+                            stableLocation = null;
+                          });
+
+                          final capturedLocation =
+                              await captureStableTeacherLocation((
+                                completed,
+                                total,
+                              ) {
+                                if (!dialogBuildContext.mounted) {
+                                  return;
+                                }
+
+                                setDialogState(() {
+                                  error =
+                                      'Collecting accurate classroom centre...\n'
+                                      'GPS reading $completed of $total';
+                                });
+                              });
+
+                          if (!dialogBuildContext.mounted) {
+                            return;
+                          }
+
+                          // --------------------------------------
+                          // GPS FAILED
+                          // --------------------------------------
+
+                          if (capturedLocation == null) {
+                            setDialogState(() {
+                              gettingLocation = false;
+                              stableLocation = null;
+                              error =
+                                  'Unable to obtain 10 reliable GPS readings.\n'
+                                  'Move to the classroom centre and ensure mock GPS is disabled.';
+                            });
+
+                            return;
+                          }
+
+                          // --------------------------------------
+                          // GPS SUCCESS
+                          // --------------------------------------
+
+                          stableLocation = capturedLocation;
+
+                          setDialogState(() {
+                            gettingLocation = false;
+                            error =
+                                'Location verified ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“';
+                          });
+
+                          // --------------------------------------
+                          // CLOSE DIALOG
+                          // --------------------------------------
+
+                          Navigator.pop(dialogContext);
+
+                          // --------------------------------------
+                          // CREATE SESSION
+                          // --------------------------------------
+
+                          await _startSession(
+                            subjectName: subject,
+                            subjectCode: code,
+                            semester: semester,
+                            division: division,
+                            durationMinutes: duration,
+                            classroomLength: classroomLength,
+                            classroomWidth: classroomWidth,
+                            location: capturedLocation,
+                          );
+                        },
+                  icon: gettingLocation
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.play_arrow),
+                  label: Text(
+                    gettingLocation
+                        ? 'VERIFYING LOCATION...'
+                        : 'START ATTENDANCE',
                   ),
                 ),
-                actions: [
-                  if (currentStep > 0)
-                    TextButton(
-                      onPressed: gettingLocation
-                          ? null
-                          : () => setDialogState(() {
-                              currentStep--;
-                              error = '';
-                            }),
-                      child: const Text('BACK'),
-                    )
-                  else
-                    TextButton(
-                      onPressed: gettingLocation
-                          ? null
-                          : () => Navigator.pop(dialogContext),
-                      child: const Text('CANCEL'),
-                    ),
-                  const SizedBox(width: 4),
-                  FilledButton.icon(
-                    onPressed: gettingLocation
-                        ? null
-                        : () async {
-                            if (currentStep == 0) {
-                              if (validateClassStep(setDialogState)) {
-                                setDialogState(() {
-                                  currentStep = 1;
-                                  error = '';
-                                });
-                              }
-                              return;
-                            }
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
-                            if (currentStep == 1) {
-                              if (validateClassroomStep(setDialogState)) {
-                                setDialogState(() {
-                                  currentStep = 2;
-                                  error = '';
-                                });
-                              }
-                              return;
-                            }
+  // ==========================================================
+  // AUTHENTICATED API HEADERS
+  // ==========================================================
 
-                            if (stableLocation == null) {
-                              setDialogState(() {
-                                error =
-                                    'Verify the classroom centre before starting attendance.';
-                              });
-                              return;
-                            }
+  // The login page saves the JWT using the SharedPreferences key
+  // `auth_token`. Protected backend routes require it as a Bearer token.
+  Future<Map<String, String>?> _getAuthenticatedHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
 
-                            final subject = subjectNameController.text.trim();
-                            final code = subjectCodeController.text
-                                .trim()
-                                .toUpperCase();
-                            final semester = semesterController.text.trim();
-                            final division = divisionController.text
-                                .trim()
-                                .toUpperCase();
-                            final duration = int.parse(
-                              durationController.text.trim(),
-                            );
-                            final finalLength = double.parse(
-                              lengthController.text.trim(),
-                            );
-                            final finalWidth = double.parse(
-                              widthController.text.trim(),
-                            );
-                            final capturedLocation = stableLocation!;
-
-                            Navigator.pop(dialogContext);
-
-                            await _startSession(
-                              subjectName: subject,
-                              subjectCode: code,
-                              semester: semester,
-                              division: division,
-                              durationMinutes: duration,
-                              classroomLength: finalLength,
-                              classroomWidth: finalWidth,
-                              location: capturedLocation,
-                            );
-                          },
-                    icon: Icon(
-                      currentStep == 2
-                          ? Icons.play_arrow_rounded
-                          : Icons.arrow_forward_rounded,
-                    ),
-                    label: Text(
-                      currentStep == 2 ? 'START ATTENDANCE' : 'CONTINUE',
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
-        },
-      );
-    } finally {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        subjectNameController.dispose();
-        subjectCodeController.dispose();
-        semesterController.dispose();
-        divisionController.dispose();
-        durationController.dispose();
-        lengthController.dispose();
-        widthController.dispose();
-      });
+    if (token == null || token.trim().isEmpty) {
+      return null;
     }
+
+    return <String, String>{
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${token.trim()}',
+    };
   }
 
   // ==========================================================
@@ -3483,9 +2983,24 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
 
       final endTime = now.add(Duration(minutes: durationMinutes));
 
+      final headers = await _getAuthenticatedHeaders();
+
+      if (headers == null) {
+        if (!mounted) return;
+
+        setState(() {
+          _loading = false;
+          _statusMessage =
+              'Your login session is missing. Please log out and log in again.';
+        });
+
+        _showMessage(_statusMessage);
+        return;
+      }
+
       final response = await http.post(
         Uri.parse('$backendUrl/sessions/start'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode({
           'faculty_user_id': widget.userId,
 
@@ -3580,7 +3095,12 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
           return;
         }
 
-        final qrValue = token.toString();
+        // Encode both values in the QR. This makes the QR self-contained
+        // while the backend still accepts legacy token-only QR codes.
+        final qrValue = jsonEncode({
+          'session_id': sessionId,
+          'qr_token': token.toString(),
+        });
 
         setState(() {
           _loading = false;
@@ -3613,18 +3133,9 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
           _remainingTime = Duration(minutes: durationMinutes);
 
           _statusMessage = 'Attendance session is active.';
-
-          // Reset live monitoring for the newly created session.
-          _livePresentCount = 0;
-          _liveLateCount = 0;
-          _liveRejectedCount = 0;
-          _liveTotalStudents = 0;
-          _liveRecentActivity = [];
-          _lastAttendanceRefresh = null;
         });
 
         _startCountdown();
-        _startLiveAttendanceRefresh();
 
         return;
       }
@@ -3716,8 +3227,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     }
 
     _countdownTimer?.cancel();
-    _attendanceRefreshTimer?.cancel();
-    _attendanceRefreshTimer = null;
 
     if (_sessionId == null) {
       if (!mounted) return;
@@ -3732,12 +3241,31 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     }
 
     try {
+      final headers = await _getAuthenticatedHeaders();
+
+      if (headers == null) {
+        debugPrint(
+          'SESSION CLOSE: authentication token is missing. '
+          'The faculty must log in again.',
+        );
+
+        if (mounted) {
+          setState(() {
+            _statusMessage =
+                'Login session is missing. Please log in again to close the session.';
+          });
+          _showMessage(_statusMessage);
+        }
+
+        return;
+      }
+
       final response = await http.post(
         Uri.parse(
           '$backendUrl/sessions/'
           '${_sessionId!}/close',
         ),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode({'faculty_user_id': widget.userId}),
       );
 
@@ -3787,8 +3315,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         data: _qrData!,
         version: QrVersions.auto,
         gapless: true,
-        color: Colors.black,
-        emptyColor: Colors.white,
       );
 
       final ByteData? byteData = await painter.toImageData(
@@ -3820,7 +3346,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
               'Code: $_subjectCode\n'
               'Semester: $_semester\n'
               'Division: $_division\n'
-              'Classroom: ${_classroomLength.toStringAsFixed(1)} m × ${_classroomWidth.toStringAsFixed(1)} m\n\n'
+              'Classroom: ${_classroomLength.toStringAsFixed(1)} m ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ${_classroomWidth.toStringAsFixed(1)} m\n\n'
               'Scan this QR to mark attendance.',
           files: [XFile(file.path, mimeType: 'image/png')],
         ),
@@ -3830,167 +3356,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
 
       debugPrint('QR SHARE ERROR: $e');
     }
-  }
-
-  // ==========================================================
-  // LIVE ATTENDANCE MONITORING
-  // ==========================================================
-
-  void _startLiveAttendanceRefresh() {
-    _attendanceRefreshTimer?.cancel();
-
-    // Fetch immediately, then refresh every 5 seconds while the
-    // session is active. The existing faculty report endpoint is
-    // used so no new backend API is required for this UI phase.
-    _refreshLiveAttendance();
-    _attendanceRefreshTimer = Timer.periodic(
-      const Duration(seconds: 5),
-      (_) => _refreshLiveAttendance(),
-    );
-  }
-
-  Future<void> _refreshLiveAttendance({bool manual = false}) async {
-    if (!_sessionActive || _sessionId == null || _attendanceRefreshing) {
-      return;
-    }
-
-    if (manual) {
-      setState(() => _attendanceRefreshing = true);
-    } else {
-      _attendanceRefreshing = true;
-    }
-
-    try {
-      final response = await http.get(
-        Uri.parse('$backendUrl/faculty/attendance-report/${widget.userId}'),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Server returned ${response.statusCode}');
-      }
-
-      final decoded = jsonDecode(response.body);
-      final session = _findLiveSession(decoded, _sessionId!);
-
-      if (session == null) {
-        _attendanceRefreshing = false;
-        if (manual && mounted) setState(() {});
-        return;
-      }
-
-      final summaryValue = session['summary'];
-      final summary = summaryValue is Map
-          ? Map<String, dynamic>.from(summaryValue)
-          : <String, dynamic>{};
-
-      final studentsValue = session['students'];
-      final students = studentsValue is List
-          ? List<dynamic>.from(studentsValue)
-          : <dynamic>[];
-
-      int total = _liveTotalStudents;
-      int present = _toIntValue(
-        summary['present'] ?? session['present'] ?? session['present_count'],
-      );
-      int late = _toIntValue(
-        summary['late'] ?? session['late'] ?? session['late_count'],
-      );
-      int rejected = _toIntValue(
-        summary['rejected'] ?? session['rejected'] ?? session['rejected_count'],
-      );
-
-      if (students.isNotEmpty) {
-        total = students.length;
-        present = 0;
-        late = 0;
-
-        for (final item in students) {
-          if (item is! Map) continue;
-          final status = _toStringValue(item['status']).toLowerCase().trim();
-          if (status == 'present') {
-            present++;
-          } else if (status == 'late') {
-            late++;
-          }
-        }
-      }
-
-      if (total < present + late + rejected) {
-        total = present + late + rejected;
-      }
-
-      final recent = <Map<String, dynamic>>[];
-      for (final item in students) {
-        if (item is! Map) continue;
-        final map = Map<String, dynamic>.from(item);
-        final status = _toStringValue(map['status']).toLowerCase().trim();
-        if (status == 'present' || status == 'late' || status == 'rejected') {
-          recent.add(map);
-        }
-      }
-
-      recent.sort((a, b) {
-        final aTime = _toStringValue(
-          a['marked_at'] ?? a['created_at'] ?? a['attendance_time'],
-        );
-        final bTime = _toStringValue(
-          b['marked_at'] ?? b['created_at'] ?? b['attendance_time'],
-        );
-        return bTime.compareTo(aTime);
-      });
-
-      if (!mounted) return;
-
-      setState(() {
-        _liveTotalStudents = total;
-        _livePresentCount = present;
-        _liveLateCount = late;
-        _liveRejectedCount = rejected;
-        _liveRecentActivity = recent.take(5).toList();
-        _lastAttendanceRefresh = DateTime.now();
-        _attendanceRefreshing = false;
-      });
-    } catch (e) {
-      _attendanceRefreshing = false;
-      debugPrint('LIVE ATTENDANCE REFRESH ERROR: $e');
-      if (manual && mounted) setState(() {});
-    }
-  }
-
-  Map<String, dynamic>? _findLiveSession(dynamic value, int sessionId) {
-    if (value is Map) {
-      final map = Map<String, dynamic>.from(value);
-      final candidates = [
-        map['id'],
-        map['session_id'],
-        map['attendance_session_id'],
-      ];
-      if (candidates.any((v) => v?.toString() == sessionId.toString())) {
-        return map;
-      }
-
-      for (final entry in map.values) {
-        final found = _findLiveSession(entry, sessionId);
-        if (found != null) return found;
-      }
-    } else if (value is List) {
-      for (final item in value) {
-        final found = _findLiveSession(item, sessionId);
-        if (found != null) return found;
-      }
-    }
-    return null;
-  }
-
-  int _toIntValue(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    return int.tryParse(value?.toString() ?? '') ?? 0;
-  }
-
-  String _toStringValue(dynamic value) {
-    if (value == null || value.toString() == 'null') return '';
-    return value.toString();
   }
 
   // ==========================================================
@@ -4058,12 +3423,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         ? 1
         : _sessionEndTime!.difference(DateTime.now()).inSeconds.clamp(1, 86400);
     final progress = (remainingSeconds / totalSeconds).clamp(0.0, 1.0);
-    final markedCount = _livePresentCount + _liveLateCount;
-    final notMarked = (_liveTotalStudents - markedCount - _liveRejectedCount)
-        .clamp(0, 999999);
-    final attendanceRate = _liveTotalStudents > 0
-        ? (markedCount / _liveTotalStudents) * 100
-        : 0.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -4154,12 +3513,12 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         Card(
           elevation: 0,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: Column(
               children: [
                 if (_qrData != null)
                   Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
@@ -4170,15 +3529,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                       version: QrVersions.auto,
                       size: 230,
                       backgroundColor: Colors.white,
-                      eyeStyle: const QrEyeStyle(
-                        eyeShape: QrEyeShape.square,
-                        color: Colors.black,
-                      ),
-                      dataModuleStyle: const QrDataModuleStyle(
-                        dataModuleShape: QrDataModuleShape.square,
-                        color: Colors.black,
-                      ),
-                      errorCorrectionLevel: QrErrorCorrectLevel.H,
                     ),
                   ),
                 const SizedBox(height: 14),
@@ -4192,159 +3542,8 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$_subjectCode • Semester $_semester • Division $_division',
+                  '$_subjectCode ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ Semester $_semester ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ Division $_division',
                   textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 18),
-
-                // ------------------------------------------------
-                // LIVE ATTENDANCE COUNTERS
-                // ------------------------------------------------
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Attendance monitor',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Refresh attendance',
-                        onPressed: _attendanceRefreshing
-                            ? null
-                            : () => _refreshLiveAttendance(manual: true),
-                        icon: _attendanceRefreshing
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.refresh),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _liveCountCard(
-                        icon: Icons.check_circle_rounded,
-                        label: 'Present',
-                        value: _livePresentCount,
-                        iconColor: Colors.green,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _liveCountCard(
-                        icon: Icons.hourglass_top_rounded,
-                        label: 'Not marked',
-                        value: notMarked,
-                        iconColor: Colors.orange,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _liveCountCard(
-                        icon: Icons.block_rounded,
-                        label: 'Rejected',
-                        value: _liveRejectedCount,
-                        iconColor: Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.groups_rounded),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Attendance rate',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            Text(
-                              '${attendanceRate.toStringAsFixed(0)}%',
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        '$_livePresentCount${_liveLateCount > 0 ? ' + $_liveLateCount late' : ''} / $_liveTotalStudents',
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 18),
-
-                // ------------------------------------------------
-                // RECENT ACTIVITY
-                // ------------------------------------------------
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Recent activity',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (_liveRecentActivity.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.hourglass_empty_rounded),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Waiting for students to mark attendance...',
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  ..._liveRecentActivity.map(_liveActivityTile),
-
-                const SizedBox(height: 18),
-                ClassroomGeofencePreview(
-                  length: _classroomLength,
-                  width: _classroomWidth,
-                  accuracy: _teacherPosition?.accuracy,
-                  verified: true,
-                  compact: true,
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -4353,7 +3552,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                       child: _sessionStat(
                         Icons.straighten,
                         'Classroom',
-                        '${_classroomLength.toStringAsFixed(1)} × ${_classroomWidth.toStringAsFixed(1)} m',
+                        '${_classroomLength.toStringAsFixed(1)} ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ${_classroomWidth.toStringAsFixed(1)} m',
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -4367,19 +3566,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _lastAttendanceRefresh == null
-                        ? 'Live monitor starting...'
-                        : 'Updated ${_formatTime(_lastAttendanceRefresh!)}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
@@ -4432,121 +3618,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     );
   }
 
-  Widget _liveCountCard({
-    required IconData icon,
-    required String label,
-    required int value,
-    required Color iconColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: iconColor, size: 22),
-          const SizedBox(height: 5),
-          Text(
-            '$value',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-          ),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 10),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _liveActivityTile(Map<String, dynamic> student) {
-    final status = _toStringValue(student['status']).toLowerCase().trim();
-    final name = _toStringValue(
-      student['full_name'] ??
-          student['name'] ??
-          student['student_name'] ??
-          student['student_id'],
-    );
-    final usn = _toStringValue(
-      student['student_id'] ?? student['usn'] ?? student['username'],
-    );
-    final time = _toStringValue(
-      student['marked_at'] ??
-          student['created_at'] ??
-          student['attendance_time'],
-    );
-
-    final isLate = status == 'late';
-    final isRejected = status == 'rejected';
-    final iconColor = isRejected
-        ? Colors.red
-        : (isLate ? Colors.orange : Colors.green);
-    final icon = isRejected
-        ? Icons.block_rounded
-        : (isLate ? Icons.schedule_rounded : Icons.check_circle_rounded);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 7),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: iconColor, size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name.isEmpty ? 'Student' : name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                Text(
-                  isRejected
-                      ? 'Attendance rejected'
-                      : (isLate
-                            ? 'Attendance marked late'
-                            : 'Attendance verified'),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (usn.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 6),
-              child: Text(
-                usn,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          if (time.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Text(
-                time.length > 16 ? time.substring(time.length - 8) : time,
-                style: const TextStyle(fontSize: 10),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _sessionStat(IconData icon, String label, String value) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -4587,6 +3658,9 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
 
     final pages = <Widget>[
       _buildFacultyHome(theme),
+
+      const FacultyAssignmentsPage(),
+
       _buildFacultyProfile(theme),
     ];
 
@@ -4596,13 +3670,8 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         centerTitle: false,
         actions: [
           IconButton(
-            tooltip: 'Notifications',
-            onPressed: _openFacultyNotifications,
-            icon: const Icon(Icons.notifications_none_rounded),
-          ),
-          IconButton(
             tooltip: 'Profile',
-            onPressed: () => setState(() => _selectedTab = 1),
+            onPressed: () => setState(() => _selectedTab = 2),
             icon: const Icon(Icons.account_circle_outlined),
           ),
         ],
@@ -4613,7 +3682,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedTab,
         onDestinationSelected: (index) {
-          if (index == 2) {
+          if (index == 3) {
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -4632,6 +3701,11 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
             label: 'Home',
           ),
           NavigationDestination(
+            icon: Icon(Icons.assignment_outlined),
+            selectedIcon: Icon(Icons.assignment),
+            label: 'Assignments',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.person_outline),
             selectedIcon: Icon(Icons.person),
             label: 'Profile',
@@ -4646,51 +3720,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     );
   }
 
-  void _openFacultySecurity() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FacultySecurityCenterPage(
-          username: widget.username,
-          sessionActive: _sessionActive,
-          presentCount: _livePresentCount,
-          rejectedCount: _liveRejectedCount,
-        ),
-      ),
-    );
-  }
-
-  void _openFacultyAnalytics() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FacultyAnalyticsPage(userId: widget.userId),
-      ),
-    );
-  }
-
-  void _openFacultyHistory() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FacultySessionHistoryPage(userId: widget.userId),
-      ),
-    );
-  }
-
-  void _openFacultyNotifications() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => FacultyNotificationsPage(
-          sessionActive: _sessionActive,
-          presentCount: _livePresentCount,
-          rejectedCount: _liveRejectedCount,
-        ),
-      ),
-    );
-  }
-
   Widget _buildFacultyHome(ThemeData theme) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -4698,7 +3727,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: theme.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(24),
@@ -4753,7 +3782,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
             _activeSessionCard()
           else ...[
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: theme.colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(24),
@@ -4822,51 +3851,10 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                   child: _featureCard(
                     Icons.crop_square,
                     'Classroom',
-                    'Length × width geofence',
+                    'Length ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â width geofence',
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Faculty tools',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: _openFacultySecurity,
-                          icon: const Icon(Icons.security_rounded),
-                          label: const Text('Security Center'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: _openFacultyAnalytics,
-                          icon: const Icon(Icons.insights_rounded),
-                          label: const Text('Analytics'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: _openFacultyHistory,
-                          icon: const Icon(Icons.history_rounded),
-                          label: const Text('Session History'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
             ),
           ],
           const SizedBox(height: 14),
@@ -4894,7 +3882,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     return Card(
       elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -4976,38 +3964,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
               ],
             ),
           ),
-          Card(
-            elevation: 0,
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.notifications_none_rounded),
-                  title: const Text('Notifications'),
-                  subtitle: const Text('Session and attendance alerts'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: _openFacultyNotifications,
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.security_rounded),
-                  title: const Text('Security Center'),
-                  subtitle: const Text(
-                    'Verification layers and security events',
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: _openFacultySecurity,
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.history_rounded),
-                  title: const Text('Session History'),
-                  subtitle: const Text('Review completed attendance sessions'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: _openFacultyHistory,
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: 18),
           OutlinedButton.icon(
             onPressed: _sessionActive ? null : _logout,
@@ -5037,872 +3993,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
 
     return '${minutes.toString().padLeft(2, '0')}:'
         '${seconds.toString().padLeft(2, '0')}';
-  }
-}
-
-// ============================================================
-// FACULTY SECURITY CENTER
-// ============================================================
-class FacultySecurityCenterPage extends StatelessWidget {
-  final String username;
-  final bool sessionActive;
-  final int presentCount;
-  final int rejectedCount;
-
-  const FacultySecurityCenterPage({
-    super.key,
-    required this.username,
-    required this.sessionActive,
-    required this.presentCount,
-    required this.rejectedCount,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final layers = [
-      (
-        'Dynamic QR',
-        'Unique session token protects the attendance session.',
-        Icons.qr_code_2_rounded,
-      ),
-      (
-        '5-point GPS',
-        'Multiple readings establish a stable verification point.',
-        Icons.gps_fixed_rounded,
-      ),
-      (
-        'Mock GPS detection',
-        'Simulated location signals are rejected by the existing flow.',
-        Icons.location_disabled_rounded,
-      ),
-      (
-        'Rectangular geofence',
-        'Students must be inside the configured classroom boundary.',
-        Icons.crop_square_rounded,
-      ),
-      (
-        'Face verification',
-        'Student identity verification remains part of attendance.',
-        Icons.face_retouching_natural_rounded,
-      ),
-      (
-        'Duplicate prevention',
-        'Repeated attendance for the same session is blocked.',
-        Icons.block_rounded,
-      ),
-    ];
-    return Scaffold(
-      appBar: AppBar(title: const Text('Faculty Security Center')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: scheme.primaryContainer,
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 26,
-                  child: Text(
-                    username.isEmpty
-                        ? 'F'
-                        : username.substring(0, 1).toUpperCase(),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'AntiProxy Security',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        sessionActive
-                            ? 'Live session protected'
-                            : 'Protection layers ready',
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.verified_rounded, color: scheme.primary, size: 32),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _metric(
-                  context,
-                  'Present',
-                  presentCount.toString(),
-                  Icons.how_to_reg_rounded,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _metric(
-                  context,
-                  'Rejected',
-                  rejectedCount.toString(),
-                  Icons.gpp_bad_rounded,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            'Verification layers',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 10),
-          ...layers.map(
-            (item) => Card(
-              elevation: 0,
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: CircleAvatar(child: Icon(item.$3, size: 21)),
-                title: Text(
-                  item.$1,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(item.$2),
-                trailing: const Icon(Icons.check_circle_rounded),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            elevation: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Security activity',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
-                  ),
-                  const SizedBox(height: 10),
-                  _event(
-                    Icons.qr_code_2_rounded,
-                    'QR session protection',
-                    'Dynamic QR is used for the active session.',
-                  ),
-                  _event(
-                    Icons.location_on_rounded,
-                    'Location protection',
-                    'Teacher and student location validation remain enabled.',
-                  ),
-                  _event(
-                    Icons.face_rounded,
-                    'Identity protection',
-                    'Face verification remains part of attendance marking.',
-                  ),
-                  _event(
-                    Icons.crop_square_rounded,
-                    'Boundary protection',
-                    'Rectangular classroom geofence is enforced server-side.',
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _metric(
-    BuildContext context,
-    String label,
-    String value,
-    IconData icon,
-  ) {
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Icon(icon),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  Text(label),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _event(IconData icon, String title, String subtitle) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                Text(subtitle, style: const TextStyle(fontSize: 12)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================
-// FACULTY ANALYTICS
-// ============================================================
-class FacultyAnalyticsPage extends StatefulWidget {
-  final dynamic userId;
-  const FacultyAnalyticsPage({super.key, required this.userId});
-  @override
-  State<FacultyAnalyticsPage> createState() => _FacultyAnalyticsPageState();
-}
-
-class _FacultyAnalyticsPageState extends State<FacultyAnalyticsPage> {
-  bool _loading = true;
-  String? _error;
-  List<Map<String, dynamic>> _reports = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final response = await http.get(
-        Uri.parse('$backendUrl/faculty/attendance-report/${widget.userId}'),
-      );
-      if (response.statusCode != 200)
-        throw Exception('Server returned ${response.statusCode}.');
-      final decoded = jsonDecode(response.body);
-      final raw = decoded is List
-          ? decoded
-          : (decoded is Map && decoded['reports'] is List
-                ? decoded['reports']
-                : decoded is Map && decoded['data'] is List
-                ? decoded['data']
-                : <dynamic>[]);
-      _reports = raw
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
-      if (mounted) setState(() => _loading = false);
-    } catch (e) {
-      if (mounted)
-        setState(() {
-          _loading = false;
-          _error = e.toString();
-        });
-    }
-  }
-
-  double _num(dynamic v) => double.tryParse(v?.toString() ?? '') ?? 0;
-  int _int(dynamic v) => int.tryParse(v?.toString() ?? '') ?? 0;
-
-  @override
-  Widget build(BuildContext context) {
-    final sessions = _reports.length;
-    int present = 0, total = 0;
-    for (final r in _reports) {
-      present += _int(r['present'] ?? r['present_count']);
-      total += _int(r['total'] ?? r['total_students']);
-    }
-    final rate = total == 0 ? 0.0 : present * 100 / total;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Faculty Analytics'),
-        actions: [
-          IconButton(
-            onPressed: _loading ? null : _load,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.cloud_off_rounded, size: 48),
-                    const SizedBox(height: 12),
-                    Text(_error!, textAlign: TextAlign.center),
-                    const SizedBox(height: 12),
-                    FilledButton(onPressed: _load, child: const Text('Retry')),
-                  ],
-                ),
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _stat(
-                          context,
-                          'Sessions',
-                          sessions.toString(),
-                          Icons.calendar_month_rounded,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _stat(
-                          context,
-                          'Present',
-                          present.toString(),
-                          Icons.how_to_reg_rounded,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  _stat(
-                    context,
-                    'Average attendance',
-                    '${rate.toStringAsFixed(1)}%',
-                    Icons.insights_rounded,
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Attendance overview',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 10),
-                  Card(
-                    elevation: 0,
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${rate.toStringAsFixed(1)}%',
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          LinearProgressIndicator(
-                            value: (rate / 100).clamp(0, 1),
-                            minHeight: 10,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '$present verified attendance records across the available report data.',
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  const Text(
-                    'Sessions',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 8),
-                  ..._reports.asMap().entries.map(
-                    (entry) => _reportCard(context, entry.value, entry.key + 1),
-                  ),
-                  if (_reports.isEmpty)
-                    const Card(
-                      elevation: 0,
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Text('No report data is available yet.'),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-    );
-  }
-
-  Widget _stat(
-    BuildContext context,
-    String title,
-    String value,
-    IconData icon,
-  ) => Card(
-    elevation: 0,
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Icon(icon),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(title),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  Widget _reportCard(BuildContext context, Map<String, dynamic> r, int n) {
-    final subject =
-        (r['subject_name'] ?? r['subject'] ?? r['subject_code'] ?? 'Session')
-            .toString();
-    final date = (r['attendance_date'] ?? r['date'] ?? '').toString();
-    final p = _int(r['present'] ?? r['present_count']);
-    final t = _int(r['total'] ?? r['total_students']);
-    final pct = t == 0 ? 0.0 : p * 100 / t;
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(child: Text('$n')),
-        title: Text(
-          subject,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text(
-          date.isEmpty ? '$p / $t present' : '$date • $p / $t present',
-        ),
-        trailing: Text(
-          '${pct.toStringAsFixed(0)}%',
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================
-// FACULTY SESSION HISTORY + STUDENT DETAILS
-// ============================================================
-class FacultySessionHistoryPage extends StatefulWidget {
-  final dynamic userId;
-
-  const FacultySessionHistoryPage({super.key, required this.userId});
-
-  @override
-  State<FacultySessionHistoryPage> createState() =>
-      _FacultySessionHistoryPageState();
-}
-
-class _FacultySessionHistoryPageState extends State<FacultySessionHistoryPage> {
-  bool _loading = true;
-  String? _error;
-
-  List<Map<String, dynamic>> _reports = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
-    }
-
-    try {
-      final response = await http.get(
-        Uri.parse('$backendUrl/faculty/attendance-report/${widget.userId}'),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Server returned ${response.statusCode}.');
-      }
-
-      final decoded = jsonDecode(response.body);
-
-      final dynamic raw = decoded is List
-          ? decoded
-          : decoded is Map && decoded['reports'] is List
-          ? decoded['reports']
-          : decoded is Map && decoded['data'] is List
-          ? decoded['data']
-          : <dynamic>[];
-
-      _reports = raw is List
-          ? raw
-                .whereType<Map>()
-                .map((item) => Map<String, dynamic>.from(item))
-                .toList()
-          : <Map<String, dynamic>>[];
-
-      if (mounted) {
-        setState(() {
-          _loading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = e.toString();
-        });
-      }
-    }
-  }
-
-  // Safely converts the JSON "students" array into
-  // List<Map<String, dynamic>>.
-  List<Map<String, dynamic>> _studentList(dynamic value) {
-    if (value is! List) {
-      return <Map<String, dynamic>>[];
-    }
-
-    return value
-        .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
-        .toList();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Session History'),
-        actions: [
-          IconButton(
-            onPressed: _loading ? null : _load,
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.cloud_off_rounded, size: 48),
-                    const SizedBox(height: 12),
-                    Text(_error!, textAlign: TextAlign.center),
-                    const SizedBox(height: 12),
-                    FilledButton(onPressed: _load, child: const Text('Retry')),
-                  ],
-                ),
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  const Text(
-                    'Completed attendance sessions',
-                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 12),
-
-                  ..._reports.asMap().entries.map((entry) {
-                    final r = entry.value;
-
-                    final subject =
-                        (r['subject_name'] ??
-                                r['subject'] ??
-                                r['subject_code'] ??
-                                'Session')
-                            .toString();
-
-                    final date = (r['attendance_date'] ?? r['date'] ?? '')
-                        .toString();
-
-                    // IMPORTANT:
-                    // Convert List<dynamic> from JSON into
-                    // List<Map<String, dynamic>> before passing
-                    // it to the student details page.
-                    final studentList = _studentList(r['students']);
-
-                    final count = studentList.length;
-
-                    return Card(
-                      elevation: 0,
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.event_note_rounded),
-                        ),
-                        title: Text(
-                          subject,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: Text(
-                          date.isEmpty ? 'Session ${entry.key + 1}' : date,
-                        ),
-                        trailing: Text(
-                          '$count\nstudents',
-                          textAlign: TextAlign.center,
-                        ),
-                        onTap: studentList.isNotEmpty
-                            ? () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        FacultySessionStudentDetailsPage(
-                                          subject: subject,
-                                          date: date,
-                                          students: studentList,
-                                        ),
-                                  ),
-                                );
-                              }
-                            : null,
-                      ),
-                    );
-                  }),
-
-                  if (_reports.isEmpty)
-                    const Card(
-                      elevation: 0,
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Text('No session history is available yet.'),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-    );
-  }
-}
-
-// ============================================================
-// FACULTY SESSION STUDENT DETAILS
-// ============================================================
-class FacultySessionStudentDetailsPage extends StatelessWidget {
-  final String subject;
-  final String date;
-  final List<dynamic> students;
-  const FacultySessionStudentDetailsPage({
-    super.key,
-    required this.subject,
-    required this.date,
-    required this.students,
-  });
-  @override
-  Widget build(BuildContext context) {
-    int present = 0, absent = 0, late = 0;
-    for (final item in students) {
-      if (item is! Map) continue;
-      final status = (item['status'] ?? '').toString().toLowerCase();
-      if (status == 'present')
-        present++;
-      else if (status == 'late')
-        late++;
-      else
-        absent++;
-    }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Student Attendance Details')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            elevation: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    subject,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  if (date.isNotEmpty) Text(date),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Chip(label: Text('Present $present')),
-                      Chip(label: Text('Late $late')),
-                      Chip(label: Text('Absent $absent')),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          ...students.whereType<Map>().map((raw) {
-            final m = Map<String, dynamic>.from(raw);
-            final name =
-                (m['full_name'] ??
-                        m['name'] ??
-                        m['student_name'] ??
-                        m['student_id'] ??
-                        'Student')
-                    .toString();
-            final usn = (m['student_id'] ?? m['usn'] ?? '').toString();
-            final status = (m['status'] ?? '').toString();
-            final ok =
-                status.toLowerCase() == 'present' ||
-                status.toLowerCase() == 'late';
-            return Card(
-              elevation: 0,
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: CircleAvatar(
-                  child: Icon(
-                    ok ? Icons.verified_rounded : Icons.person_outline_rounded,
-                  ),
-                ),
-                title: Text(
-                  name,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(usn.isEmpty ? status : '$usn • $status'),
-                trailing: Icon(
-                  ok ? Icons.check_circle_rounded : Icons.cancel_rounded,
-                ),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================
-// FACULTY NOTIFICATIONS
-// ============================================================
-class FacultyNotificationsPage extends StatelessWidget {
-  final bool sessionActive;
-  final int presentCount;
-  final int rejectedCount;
-  const FacultyNotificationsPage({
-    super.key,
-    required this.sessionActive,
-    required this.presentCount,
-    required this.rejectedCount,
-  });
-  @override
-  Widget build(BuildContext context) {
-    final items = <Map<String, dynamic>>[
-      if (sessionActive)
-        {
-          'icon': Icons.play_circle_fill_rounded,
-          'title': 'Attendance session is live',
-          'subtitle': '$presentCount students currently marked.',
-        },
-      if (rejectedCount > 0)
-        {
-          'icon': Icons.warning_amber_rounded,
-          'title': 'Attendance attempts rejected',
-          'subtitle':
-              '$rejectedCount rejection(s) reported by the current live session.',
-        },
-      {
-        'icon': Icons.security_rounded,
-        'title': 'Security protection active',
-        'subtitle':
-            'QR, GPS, mock-location, geofence and face verification remain enabled.',
-      },
-      {
-        'icon': Icons.info_outline_rounded,
-        'title': 'AntiProxy system',
-        'subtitle':
-            'Attendance actions are validated through the configured backend.',
-      },
-    ];
-    return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (items.isEmpty)
-            const Card(
-              elevation: 0,
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Text('No notifications.'),
-              ),
-            ),
-          ...items.map(
-            (item) => Card(
-              elevation: 0,
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: CircleAvatar(child: Icon(item['icon'] as IconData)),
-                title: Text(
-                  item['title'] as String,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(item['subtitle'] as String),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -6179,11 +4269,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
               onRefresh: _loadDashboard,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: [
                   _buildWelcomeCard(context),
 
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 20),
 
                   _buildSectionTitle(
                     context,
@@ -6251,9 +4341,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -6372,7 +4462,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           // IMPORTANT:
           // This replaces the old 1.25 ratio
           // which caused the 23px overflow.
-          childAspectRatio: width < 400 ? 0.88 : 1.05,
+          childAspectRatio: width < 400 ? 1.08 : 1.20,
 
           children: [
             _AdminOverviewCard(
@@ -6446,14 +4536,14 @@ class _AdminOverviewCard extends StatelessWidget {
 
     return Card(
       margin: EdgeInsets.zero,
-      elevation: 1.5,
+      elevation: 0.5,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(10),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -6488,7 +4578,7 @@ class _AdminOverviewCard extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
 
               Text(
                 value.toString(),
@@ -6499,7 +4589,7 @@ class _AdminOverviewCard extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 7),
+              const SizedBox(height: 4),
 
               Text(
                 title,
@@ -6512,17 +4602,28 @@ class _AdminOverviewCard extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 7),
+              const SizedBox(height: 4),
 
               Align(
                 alignment: Alignment.centerRight,
-                child: Text(
-                  'View  →',
-                  style: TextStyle(
-                    color: colorScheme.primary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'View details',
+                      style: TextStyle(
+                        color: colorScheme.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      size: 16,
+                      color: colorScheme.primary,
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -6556,14 +4657,14 @@ class _AdminActionCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 1.5,
+      elevation: 0.5,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Row(
             children: [
               Container(
@@ -7630,7 +5731,7 @@ class _AdminReportsAnalyticsPageState extends State<AdminReportsAnalyticsPage> {
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -8047,8 +6148,6 @@ class _AdminSecurityCenterPageState extends State<AdminSecurityCenterPage> {
 
     final late = _securityNumber('late_records');
 
-    final verificationRate = total > 0 ? (faceVerified / total * 100) : 0.0;
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = constraints.maxWidth >= 850
@@ -8221,7 +6320,7 @@ class _AdminSecurityCenterPageState extends State<AdminSecurityCenterPage> {
     return Card(
       elevation: 0,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -8516,6 +6615,8 @@ class _AdminDepartmentsPageState extends State<AdminDepartmentsPage> {
   }
 
   Future<void> _loadDepartments() async {
+    if (!mounted) return;
+
     setState(() {
       _loading = true;
       _error = null;
@@ -8566,7 +6667,7 @@ class _AdminDepartmentsPageState extends State<AdminDepartmentsPage> {
           : RefreshIndicator(
               onRefresh: _loadDepartments,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 children: [
                   const Text(
                     'Department Information',
@@ -8847,7 +6948,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
           : _error != null && _departments.isEmpty
           ? _ErrorView(message: _error!, onRetry: _loadDepartments)
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               children: [
                 const Text(
                   'Select Department',
@@ -9140,7 +7241,7 @@ class _AdminFacultyPageState extends State<AdminFacultyPage> {
           : _error != null && _departments.isEmpty
           ? _ErrorView(message: _error!, onRetry: _loadDepartments)
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               children: [
                 const Text(
                   'Select Department',
@@ -9269,31 +7370,95 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
   Future<void> _loadDepartments() async {
     try {
       final token = await _token();
+      if (token == null || token.trim().isEmpty) {
+        throw Exception('Login session expired.');
+      }
 
       final response = await http.get(
         Uri.parse('$backendUrl/admin/subjects/departments'),
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {'Authorization': 'Bearer ${token.trim()}'},
       );
 
       if (response.statusCode != 200) {
-        throw Exception();
+        throw Exception('Failed to load departments.');
       }
 
       final data = jsonDecode(response.body);
-
       if (!mounted) return;
 
       setState(() {
         _departments = data['departments'] ?? [];
         _loadingDepartments = false;
+        _error = null;
       });
     } catch (e) {
       if (!mounted) return;
-
       setState(() {
         _loadingDepartments = false;
         _error = 'Failed to load departments.';
       });
+    }
+  }
+
+  Future<List<dynamic>> _loadManagementDepartments() async {
+    final token = await _token();
+    if (token == null || token.trim().isEmpty) {
+      throw Exception('Login session expired. Please log in again.');
+    }
+
+    final response = await http.get(
+      Uri.parse('$backendUrl/api/management/departments'),
+      headers: {'Authorization': 'Bearer ${token.trim()}'},
+    );
+
+    final dynamic data = jsonDecode(response.body);
+    if (response.statusCode != 200 || data is! Map || data['success'] != true) {
+      throw Exception(
+        data is Map
+            ? data['message']?.toString() ?? 'Unable to load departments.'
+            : 'Unable to load departments.',
+      );
+    }
+
+    return List<dynamic>.from(data['departments'] ?? []);
+  }
+
+  Future<void> _openSubjectEditor({Map<String, dynamic>? subject}) async {
+    try {
+      final departments = await _loadManagementDepartments();
+      if (!mounted) return;
+
+      final saved = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AdminSubjectEditorDialog(
+          departments: departments,
+          subject: subject,
+        ),
+      );
+
+      if (saved != true || !mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            subject == null
+                ? 'Subject created successfully.'
+                : 'Subject updated successfully.',
+          ),
+        ),
+      );
+
+      if (_selectedDepartmentId != null &&
+          _selectedSemester != null &&
+          _selectedDivision != null) {
+        await _loadSubjects();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
     }
   }
 
@@ -9370,7 +7535,10 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
       );
 
       if (response.statusCode != 200) {
-        throw Exception();
+        throw Exception(
+          'Failed to load subjects '
+          '(HTTP ${response.statusCode}): ${response.body}',
+        );
       }
 
       final data = jsonDecode(response.body);
@@ -9378,16 +7546,19 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
       if (!mounted) return;
 
       setState(() {
-        _subjects = data['subjects'] ?? [];
+        _subjects = List<dynamic>.from(data['subjects'] ?? []);
         _loadingSubjects = false;
+        _error = '';
       });
     } catch (e) {
       if (!mounted) return;
 
       setState(() {
         _loadingSubjects = false;
-        _error = 'Failed to load subjects.';
+        _error = 'Failed to load subjects: $e';
       });
+
+      debugPrint('Admin subject loading error: $e');
     }
   }
 
@@ -9406,11 +7577,25 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Subject Management')),
+      appBar: AppBar(
+        title: const Text('Subject Management'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: FilledButton.icon(
+              onPressed: _loadingDepartments
+                  ? null
+                  : () => _openSubjectEditor(),
+              icon: const Icon(Icons.add),
+              label: const Text('Add Subject'),
+            ),
+          ),
+        ],
+      ),
       body: _loadingDepartments
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               children: [
                 const Text(
                   'Select Department',
@@ -9513,6 +7698,7 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
           DataColumn(label: Text('Subject Code')),
           DataColumn(label: Text('Subject Name')),
           DataColumn(label: Text('Faculty Handling')),
+          DataColumn(label: Text('Actions')),
         ],
         rows: List.generate(_subjects.length, (index) {
           final subject = _subjects[index];
@@ -9525,6 +7711,31 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
               DataCell(
                 Text(subject['faculty_handling']?.toString() ?? 'Not assigned'),
               ),
+              DataCell(
+                IconButton(
+                  tooltip: 'Edit subject',
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () {
+                    final id = int.tryParse(
+                      (subject['id'] ?? subject['subject_id'] ?? '').toString(),
+                    );
+                    if (id == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'This row does not include a subject ID. '
+                            'Subject editing is unavailable for this row.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+                    _openSubjectEditor(
+                      subject: Map<String, dynamic>.from(subject as Map),
+                    );
+                  },
+                ),
+              ),
             ],
           );
         }),
@@ -9534,6 +7745,263 @@ class _AdminSubjectsPageState extends State<AdminSubjectsPage> {
 }
 
 // ============================================================
+
+// ============================================================
+// ADMIN SUBJECT CREATE / EDIT DIALOG
+// ============================================================
+class AdminSubjectEditorDialog extends StatefulWidget {
+  final List<dynamic> departments;
+  final Map<String, dynamic>? subject;
+
+  const AdminSubjectEditorDialog({
+    super.key,
+    required this.departments,
+    this.subject,
+  });
+
+  @override
+  State<AdminSubjectEditorDialog> createState() =>
+      _AdminSubjectEditorDialogState();
+}
+
+class _AdminSubjectEditorDialogState extends State<AdminSubjectEditorDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _codeController;
+  late final TextEditingController _nameController;
+  int? _departmentId;
+  int _semester = 1;
+  bool _saving = false;
+
+  bool get _isEditing => widget.subject != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final subject = widget.subject;
+    _codeController = TextEditingController(
+      text: subject?['subject_code']?.toString() ?? '',
+    );
+    _nameController = TextEditingController(
+      text: subject?['subject_name']?.toString() ?? '',
+    );
+    _departmentId = int.tryParse((subject?['department_id'] ?? '').toString());
+    _semester = int.tryParse((subject?['semester'] ?? '1').toString()) ?? 1;
+    if (_semester < 1 || _semester > 12) _semester = 1;
+  }
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_departmentId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Select a department.')));
+      return;
+    }
+
+    setState(() => _saving = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null || token.trim().isEmpty) {
+        throw Exception('Your login session has expired. Please log in again.');
+      }
+
+      final body = jsonEncode({
+        'subject_code': _codeController.text.trim().toUpperCase(),
+        'subject_name': _nameController.text.trim(),
+        'department_id': _departmentId,
+        'semester': _semester,
+      });
+
+      final uri = _isEditing
+          ? Uri.parse(
+              '$backendUrl/api/management/subjects/${widget.subject!['id']}',
+            )
+          : Uri.parse('$backendUrl/api/management/subjects');
+
+      final response = _isEditing
+          ? await http.put(
+              uri,
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ${token.trim()}',
+              },
+              body: body,
+            )
+          : await http.post(
+              uri,
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ${token.trim()}',
+              },
+              body: body,
+            );
+
+      final dynamic data = jsonDecode(response.body);
+      if ((response.statusCode != 200 && response.statusCode != 201) ||
+          data is! Map ||
+          data['success'] != true) {
+        final message = data is Map
+            ? (data['message']?.toString() ?? 'Unable to save subject.')
+            : 'Unable to save subject.';
+        throw Exception(message);
+      }
+
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final departments = widget.departments
+        .map((dynamic department) {
+          final map = Map<String, dynamic>.from(department as Map);
+          final id = int.tryParse(
+            (map['id'] ?? map['department_id'] ?? '').toString(),
+          );
+          final name = map['department_name']?.toString() ?? 'Department';
+          return MapEntry(id, name);
+        })
+        .where((entry) => entry.key != null)
+        .toList();
+
+    return AlertDialog(
+      title: Text(_isEditing ? 'Edit Subject' : 'Add Subject'),
+      content: SizedBox(
+        width: 420,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _codeController,
+                  textCapitalization: TextCapitalization.characters,
+                  maxLength: 50,
+                  decoration: const InputDecoration(
+                    labelText: 'Subject Code',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.tag),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Enter a subject code.';
+                    }
+                    if (value.trim().length > 50) {
+                      return 'Maximum 50 characters.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _nameController,
+                  maxLength: 150,
+                  decoration: const InputDecoration(
+                    labelText: 'Subject Name',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.menu_book_outlined),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Enter a subject name.';
+                    }
+                    if (value.trim().length > 150) {
+                      return 'Maximum 150 characters.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  value: departments.any((entry) => entry.key == _departmentId)
+                      ? _departmentId
+                      : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Department',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.account_balance_outlined),
+                  ),
+                  items: departments.map((entry) {
+                    return DropdownMenuItem<int>(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    );
+                  }).toList(),
+                  onChanged: _saving
+                      ? null
+                      : (value) => setState(() => _departmentId = value),
+                  validator: (value) =>
+                      value == null ? 'Select a department.' : null,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  value: _semester,
+                  decoration: const InputDecoration(
+                    labelText: 'Semester',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.school_outlined),
+                  ),
+                  items: List.generate(12, (index) => index + 1)
+                      .map(
+                        (value) => DropdownMenuItem<int>(
+                          value: value,
+                          child: Text('Semester $value'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _saving
+                      ? null
+                      : (value) {
+                          if (value != null) {
+                            setState(() => _semester = value);
+                          }
+                        },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: _saving ? null : _save,
+          icon: _saving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.save_outlined),
+          label: Text(_saving ? 'Saving...' : 'Save Subject'),
+        ),
+      ],
+    );
+  }
+}
+
 // ADMIN ATTENDANCE SESSIONS PAGE
 // ============================================================
 
@@ -9778,7 +8246,7 @@ class _AdminAttendanceSessionsPageState
       body: _loadingDepartments
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               children: [
                 const Text(
                   'Department',
@@ -10185,7 +8653,7 @@ class _AdminAttendanceRecordsPageState
       body: _loadingDepartments
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               children: [
                 const Text(
                   'Department',
@@ -10607,7 +9075,7 @@ class _AttendanceQrScannerPageState extends State<AttendanceQrScannerPage> {
             right: 20,
             bottom: 60,
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.70),
                 borderRadius: BorderRadius.circular(14),
@@ -10638,10 +9106,24 @@ class _AttendancePageState extends State<AttendancePage> {
 
   bool _cameraReady = false;
   bool _processing = false;
+  bool _livenessPassed = false;
+
+  late final FaceDetector _faceDetector = FaceDetector(
+    options: FaceDetectorOptions(
+      performanceMode: FaceDetectorMode.accurate,
+      enableClassification: true,
+      enableLandmarks: true,
+      enableTracking: true,
+    ),
+  );
+
+  bool _livenessRunning = false;
+  String _livenessMessage = 'Liveness check not completed.';
 
   String _statusMessage = 'Enter your USN and capture your face.';
 
   String? _qrToken;
+  int? _attendanceSessionId;
   bool _scanningQr = false;
 
   // ==========================================================
@@ -10665,6 +9147,7 @@ class _AttendancePageState extends State<AttendancePage> {
   void dispose() {
     _usnController.dispose();
     _cameraController?.dispose();
+    _faceDetector.close();
     super.dispose();
   }
 
@@ -10749,7 +9232,9 @@ class _AttendancePageState extends State<AttendancePage> {
 
       setState(() {
         _capturedImage = image;
-        _statusMessage = 'Face captured successfully.';
+        _livenessPassed = false;
+        _statusMessage =
+            'Face captured successfully. Please verify liveness again.';
       });
     } catch (e) {
       if (!mounted) return;
@@ -10757,6 +9242,98 @@ class _AttendancePageState extends State<AttendancePage> {
       setState(() {
         _statusMessage = 'Could not capture face:\n$e';
       });
+    }
+  }
+
+  //Run Liveness Check
+
+  Future<void> _runLivenessCheck() async {
+    if (_processing || _livenessRunning) return;
+
+    final controller = _cameraController;
+
+    if (!_cameraReady ||
+        controller == null ||
+        !controller.value.isInitialized) {
+      if (!mounted) return;
+      setState(() {
+        _livenessPassed = false;
+        _livenessMessage = 'Camera is not ready.';
+        _statusMessage = _livenessMessage;
+      });
+      return;
+    }
+
+    setState(() {
+      _livenessPassed = false;
+      _livenessRunning = true;
+      _livenessMessage = 'Look at the camera and blink naturally.';
+      _statusMessage = _livenessMessage;
+    });
+
+    bool eyesClosedSeen = false;
+    bool blinkDetected = false;
+
+    try {
+      final deadline = DateTime.now().add(const Duration(seconds: 12));
+
+      while (DateTime.now().isBefore(deadline)) {
+        if (!mounted) return;
+
+        final picture = await controller.takePicture();
+        final inputImage = InputImage.fromFilePath(picture.path);
+        final faces = await _faceDetector.processImage(inputImage);
+
+        if (faces.length > 1) {
+          throw Exception('More than one face detected. Please try alone.');
+        }
+
+        if (faces.length == 1) {
+          final face = faces.first;
+          final leftEye = face.leftEyeOpenProbability;
+          final rightEye = face.rightEyeOpenProbability;
+
+          if (leftEye != null && rightEye != null) {
+            final eyesClosed = leftEye < 0.30 && rightEye < 0.30;
+            final eyesOpen = leftEye > 0.65 && rightEye > 0.65;
+
+            if (eyesClosed) {
+              eyesClosedSeen = true;
+            }
+
+            if (eyesClosedSeen && eyesOpen) {
+              blinkDetected = true;
+              break;
+            }
+          }
+        }
+
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _livenessPassed = blinkDetected;
+        _livenessMessage = blinkDetected
+            ? 'Blink detected. Liveness check passed.'
+            : 'Blink not detected. Please try again.';
+        _statusMessage = _livenessMessage;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _livenessPassed = false;
+        _livenessMessage = 'Liveness check failed: $e';
+        _statusMessage = _livenessMessage;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _livenessRunning = false;
+        });
+      }
     }
   }
 
@@ -10816,6 +9393,8 @@ class _AttendancePageState extends State<AttendancePage> {
   Future<void> _scanAttendanceQr() async {
     if (_scanningQr) return;
 
+    if (!mounted) return;
+
     setState(() {
       _scanningQr = true;
       _statusMessage = 'Opening QR scanner...';
@@ -10844,10 +9423,40 @@ class _AttendancePageState extends State<AttendancePage> {
       if (!mounted) return;
 
       if (scannedValue != null && scannedValue.trim().isNotEmpty) {
-        setState(() {
-          _qrToken = scannedValue.trim();
+        final rawQr = scannedValue.trim();
 
-          _statusMessage = 'QR code scanned successfully.';
+        // New QR format may contain both session_id and qr_token as JSON.
+        // Older QR codes contain only the secure token. Both formats are
+        // accepted so existing faculty screens remain compatible.
+        String? parsedToken;
+        int? parsedSessionId;
+
+        try {
+          final decoded = jsonDecode(rawQr);
+          if (decoded is Map) {
+            parsedToken =
+                (decoded['qr_token'] ??
+                        decoded['token'] ??
+                        decoded['session_token'])
+                    ?.toString()
+                    .trim();
+
+            final rawId =
+                decoded['session_id'] ?? decoded['sessionId'] ?? decoded['id'];
+            parsedSessionId = int.tryParse(rawId?.toString() ?? '');
+          }
+        } catch (_) {
+          // Plain-token QR: keep the entire scanned value as the token.
+        }
+
+        parsedToken ??= rawQr;
+
+        setState(() {
+          _qrToken = parsedToken;
+          _attendanceSessionId = parsedSessionId;
+          _statusMessage = parsedSessionId == null
+              ? 'QR code scanned successfully.'
+              : 'QR code scanned successfully (Session #$parsedSessionId).';
         });
       } else {
         setState(() {
@@ -10878,7 +9487,7 @@ class _AttendancePageState extends State<AttendancePage> {
   // ==========================================================
 
   Future<Position?> _getStableStudentLocation() async {
-    const int requiredReadings = 5;
+    const int requiredReadings = 10;
 
     final List<Position> readings = [];
 
@@ -10889,153 +9498,319 @@ class _AttendancePageState extends State<AttendancePage> {
     setState(() {
       _statusMessage =
           'Getting GPS location...\n'
-          'Please keep the phone still.';
+          'Collecting 10 GPS readings...';
     });
 
-    for (int i = 0; i < requiredReadings; i++) {
-      try {
-        if (!mounted) {
-          return null;
-        }
+    // ------------------------------------------------------------
+    // CHECK LOCATION SERVICE
+    // ------------------------------------------------------------
 
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+
+    if (!serviceEnabled) {
+      if (mounted) {
         setState(() {
           _statusMessage =
-              'Getting GPS reading ${i + 1}/$requiredReadings...\n'
-              'Please keep the phone still.';
+              'Location service is disabled.\n'
+              'Please enable GPS and try again.';
         });
-
-        final Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-        );
-
-        print(
-          'GPS READING ${i + 1}: '
-          'lat=${position.latitude}, '
-          'lon=${position.longitude}, '
-          'accuracy=${position.accuracy}, '
-          'mocked=${position.isMocked}',
-        );
-
-        if (position.isMocked) {
-          print(
-            'GPS READING ${i + 1}: '
-            'REJECTED - MOCK LOCATION',
-          );
-
-          if (!mounted) {
-            return null;
-          }
-
-          setState(() {
-            _statusMessage =
-                'Mock location detected.\n'
-                'Attendance rejected.';
-          });
-
-          return null;
-        }
-
-        if (!position.latitude.isFinite ||
-            !position.longitude.isFinite ||
-            !position.accuracy.isFinite) {
-          print(
-            'GPS READING ${i + 1}: '
-            'REJECTED - INVALID GPS DATA',
-          );
-        } else {
-          readings.add(position);
-
-          print(
-            'GPS READING ${i + 1}: '
-            'ACCEPTED '
-            '(accuracy '
-            '${position.accuracy.toStringAsFixed(2)} m)',
-          );
-        }
-
-        if (i < requiredReadings - 1) {
-          await Future.delayed(const Duration(milliseconds: 1200));
-        }
-      } catch (e) {
-        print('GPS READING ${i + 1} ERROR: $e');
       }
-    }
-
-    if (readings.isEmpty) {
-      print('GPS FAILED: No valid GPS readings obtained.');
-
-      if (!mounted) {
-        return null;
-      }
-
-      setState(() {
-        _statusMessage =
-            'Unable to get your current location.\n'
-            'Please try again.';
-      });
 
       return null;
     }
 
-    Position bestReading = readings.first;
+    // ------------------------------------------------------------
+    // CHECK LOCATION PERMISSION
+    // ------------------------------------------------------------
 
-    for (final Position reading in readings) {
-      if (reading.accuracy < bestReading.accuracy) {
-        bestReading = reading;
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      if (mounted) {
+        setState(() {
+          _statusMessage =
+              'Location permission denied.\n'
+              'Please allow location access and try again.';
+        });
       }
+
+      return null;
     }
 
-    print('======================================');
+    // ------------------------------------------------------------
+    // CONTINUOUS GPS STREAM
+    // ------------------------------------------------------------
 
-    print('GPS READINGS SUMMARY');
+    StreamSubscription<Position>? subscription;
 
-    print('======================================');
+    final Completer<Position?> completer = Completer<Position?>();
 
-    for (int i = 0; i < readings.length; i++) {
-      print(
-        'Reading ${i + 1}: '
-        'lat=${readings[i].latitude}, '
-        'lon=${readings[i].longitude}, '
-        'accuracy='
-        '${readings[i].accuracy.toStringAsFixed(2)} m',
-      );
-    }
-
-    print('======================================');
-
-    print('BEST GPS READING');
-
-    print('======================================');
-
-    print('Latitude: ${bestReading.latitude}');
-
-    print('Longitude: ${bestReading.longitude}');
-
-    print(
-      'Accuracy: '
-      '${bestReading.accuracy.toStringAsFixed(2)} m',
+    const LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.bestForNavigation,
+      distanceFilter: 0,
     );
 
-    print('Mocked: ${bestReading.isMocked}');
+    subscription =
+        Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+          (Position position) async {
+            // Already collected 10 readings.
+            if (readings.length >= requiredReadings) {
+              return;
+            }
 
-    print('======================================');
+            // --------------------------------------------------------
+            // MOCK GPS CHECK
+            // --------------------------------------------------------
 
-    if (!mounted) {
-      return null;
-    }
+            if (position.isMocked) {
+              print('GPS READING: REJECTED - MOCK LOCATION');
 
-    setState(() {
-      _statusMessage = 'Best GPS location obtained.';
-    });
+              // Ignore mocked readings and continue collecting.
+              return;
+            }
 
-    return bestReading;
+            // --------------------------------------------------------
+            // VALIDATE GPS DATA
+            // --------------------------------------------------------
+
+            if (!position.latitude.isFinite ||
+                !position.longitude.isFinite ||
+                !position.accuracy.isFinite ||
+                position.accuracy <= 0) {
+              print('GPS READING: REJECTED - INVALID GPS DATA');
+
+              return;
+            }
+
+            if (position.latitude < -90 ||
+                position.latitude > 90 ||
+                position.longitude < -180 ||
+                position.longitude > 180) {
+              print('GPS READING: REJECTED - INVALID COORDINATES');
+
+              return;
+            }
+
+            // --------------------------------------------------------
+            // ACCEPT READING
+            // --------------------------------------------------------
+
+            readings.add(position);
+
+            print(
+              'GPS READING ${readings.length}/$requiredReadings: '
+              'lat=${position.latitude}, '
+              'lon=${position.longitude}, '
+              'accuracy=${position.accuracy.toStringAsFixed(2)} m, '
+              'mocked=${position.isMocked}',
+            );
+
+            // --------------------------------------------------------
+            // UPDATE UI
+            // --------------------------------------------------------
+
+            if (mounted) {
+              setState(() {
+                _statusMessage =
+                    'Collecting GPS readings...\n'
+                    'GPS reading ${readings.length}/$requiredReadings';
+              });
+            }
+
+            // --------------------------------------------------------
+            // WAIT UNTIL 10 USABLE READINGS
+            // --------------------------------------------------------
+
+            if (readings.length < requiredReadings) {
+              return;
+            }
+
+            // --------------------------------------------------------
+            // STOP GPS STREAM
+            // --------------------------------------------------------
+
+            await subscription?.cancel();
+
+            // --------------------------------------------------------
+            // SORT 10 READINGS BY ACCURACY
+            // BEST ACCURACY FIRST
+            // --------------------------------------------------------
+
+            readings.sort((a, b) => a.accuracy.compareTo(b.accuracy));
+
+            // --------------------------------------------------------
+            // SELECT BEST 4 READINGS
+            // --------------------------------------------------------
+
+            final List<Position> bestFour = readings.take(4).toList();
+
+            print('======================================');
+            print('GPS READINGS SUMMARY');
+            print('======================================');
+
+            for (int i = 0; i < readings.length; i++) {
+              print(
+                'Reading ${i + 1}: '
+                'lat=${readings[i].latitude}, '
+                'lon=${readings[i].longitude}, '
+                'accuracy='
+                '${readings[i].accuracy.toStringAsFixed(2)} m',
+              );
+            }
+
+            print('======================================');
+            print('BEST 4 GPS READINGS');
+            print('======================================');
+
+            for (int i = 0; i < bestFour.length; i++) {
+              print(
+                'Best ${i + 1}: '
+                'lat=${bestFour[i].latitude}, '
+                'lon=${bestFour[i].longitude}, '
+                'accuracy='
+                '${bestFour[i].accuracy.toStringAsFixed(2)} m',
+              );
+            }
+
+            // --------------------------------------------------------
+            // SORT LATITUDES
+            // --------------------------------------------------------
+
+            final List<double> latitudes =
+                bestFour.map((position) => position.latitude).toList()..sort();
+
+            // --------------------------------------------------------
+            // SORT LONGITUDES
+            // --------------------------------------------------------
+
+            final List<double> longitudes =
+                bestFour.map((position) => position.longitude).toList()..sort();
+
+            // --------------------------------------------------------
+            // SORT ACCURACIES
+            // --------------------------------------------------------
+
+            final List<double> accuracies =
+                bestFour.map((position) => position.accuracy).toList()..sort();
+
+            // --------------------------------------------------------
+            // MEDIAN OF 4 VALUES
+            //
+            // For 4 values:
+            // median = average of middle 2 values.
+            // --------------------------------------------------------
+
+            final double medianLatitude = (latitudes[1] + latitudes[2]) / 2.0;
+
+            final double medianLongitude =
+                (longitudes[1] + longitudes[2]) / 2.0;
+
+            final double medianAccuracy = (accuracies[1] + accuracies[2]) / 2.0;
+
+            // --------------------------------------------------------
+            // USE BEST READING AS POSITION TEMPLATE
+            // --------------------------------------------------------
+
+            final Position base = bestFour.first;
+
+            // --------------------------------------------------------
+            // CREATE ONE STABILIZED POSITION
+            // --------------------------------------------------------
+
+            final Position stabilizedPosition = Position(
+              latitude: medianLatitude,
+              longitude: medianLongitude,
+              timestamp: base.timestamp,
+              accuracy: medianAccuracy,
+              altitude: base.altitude,
+              altitudeAccuracy: base.altitudeAccuracy,
+              heading: base.heading,
+              headingAccuracy: base.headingAccuracy,
+              speed: base.speed,
+              speedAccuracy: base.speedAccuracy,
+              floor: base.floor,
+              isMocked: false,
+            );
+
+            // --------------------------------------------------------
+            // LOG FINAL LOCATION
+            // --------------------------------------------------------
+
+            print('======================================');
+            print('STABILIZED STUDENT GPS LOCATION');
+            print('======================================');
+
+            print('Latitude: ${stabilizedPosition.latitude}');
+
+            print('Longitude: ${stabilizedPosition.longitude}');
+
+            print(
+              'Accuracy: '
+              '${stabilizedPosition.accuracy.toStringAsFixed(2)} m',
+            );
+
+            print('Based on best 4 of 10 readings');
+
+            print('Mocked: ${stabilizedPosition.isMocked}');
+
+            print('======================================');
+
+            // --------------------------------------------------------
+            // UPDATE UI
+            // --------------------------------------------------------
+
+            if (mounted) {
+              setState(() {
+                _statusMessage = 'GPS location stabilized successfully.';
+              });
+            }
+
+            // --------------------------------------------------------
+            // RETURN ONE STABILIZED POSITION
+            // --------------------------------------------------------
+
+            if (!completer.isCompleted) {
+              completer.complete(stabilizedPosition);
+            }
+          },
+          onError: (Object error) async {
+            print('STUDENT GPS STREAM ERROR: $error');
+
+            await subscription?.cancel();
+
+            if (!completer.isCompleted) {
+              completer.complete(null);
+            }
+          },
+          cancelOnError: false,
+        );
+
+    // ------------------------------------------------------------
+    // RETURN FINAL STABILIZED LOCATION
+    // ------------------------------------------------------------
+
+    return await completer.future;
   }
-
   // ==========================================================
   // MARK ATTENDANCE
   // ==========================================================
 
   Future<void> _markAttendance() async {
+    if (!_livenessPassed) {
+      if (!mounted) return;
+
+      setState(() {
+        _statusMessage =
+            'Please complete the live-face blink verification first.';
+      });
+
+      return;
+    }
     final usn = _usnController.text.trim().toUpperCase();
 
     if (usn.isEmpty) {
@@ -11172,6 +9947,13 @@ class _AttendancePageState extends State<AttendancePage> {
 
       request.fields['usn'] = usn;
 
+      // Send session_id when the QR contains it. The backend also supports
+      // older QR codes that contain only qr_token and resolves the session
+      // directly from that secure token.
+      if (_attendanceSessionId != null) {
+        request.fields['session_id'] = _attendanceSessionId.toString();
+      }
+
       request.fields['qr_token'] = _qrToken!.trim();
 
       request.fields['latitude'] = position.latitude.toString();
@@ -11224,62 +10006,35 @@ class _AttendancePageState extends State<AttendancePage> {
       // AUTHENTICATION FAILURE
       // ======================================================
 
-      // ======================================================
-// AUTHENTICATION FAILURE
-// ======================================================
+      if (response.statusCode == 401) {
+        if (!mounted) return;
 
-if (response.statusCode == 401) {
-  debugPrint(
-    'ATTENDANCE AUTHENTICATION FAILED: '
-    '${response.body}',
-  );
+        setState(() {
+          _processing = false;
+          _statusMessage = 'Session expired. Please login again.';
+        });
 
-  final prefs = await SharedPreferences.getInstance();
+        await showDialog(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Authentication Required'),
+            content: const Text(
+              'Your login session has expired.\n\n'
+              'Please login again before marking attendance.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
 
-  // Remove only the invalid authentication session.
-  await prefs.remove('auth_token');
-  await prefs.remove('user_role');
-  await prefs.remove('username');
-  await prefs.remove('user_id');
-
-  if (!mounted) return;
-
-  setState(() {
-    _processing = false;
-    _statusMessage =
-        'Your login session is no longer valid. Please login again.';
-  });
-
-  await showDialog(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Login Required'),
-      content: const Text(
-        'Your authentication session is no longer valid.\n\n'
-        'Please login again to continue marking attendance.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.pop(dialogContext);
-          },
-          child: const Text('OK'),
-        ),
-      ],
-    ),
-  );
-
-  if (!mounted) return;
-
-  Navigator.of(context).pushAndRemoveUntil(
-    MaterialPageRoute(
-      builder: (_) => LoginPage(cameras: widget.cameras),
-    ),
-    (route) => false,
-  );
-
-  return;
-}
+        return;
+      }
 
       // ======================================================
       // ATTENDANCE SUCCESS
@@ -11483,7 +10238,7 @@ if (response.statusCode == 401) {
 
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -11551,7 +10306,9 @@ if (response.statusCode == 401) {
                         : Icons.check_circle,
                   ),
                   label: Text(
-                    _qrToken == null ? 'SCAN ATTENDANCE QR' : 'QR SCANNED ✓',
+                    _qrToken == null
+                        ? 'SCAN ATTENDANCE QR'
+                        : 'QR SCANNED ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“',
                   ),
                 ),
               ),
@@ -11632,7 +10389,9 @@ if (response.statusCode == 401) {
               // CAPTURE FACE
               // =================================================
               ElevatedButton.icon(
-                onPressed: _processing ? null : _captureFace,
+                onPressed: (_processing || _livenessRunning)
+                    ? null
+                    : _captureFace,
                 icon: const Icon(Icons.camera_alt),
                 label: Text(
                   _capturedImage == null ? 'CAPTURE FACE' : 'CAPTURE AGAIN',
@@ -11640,6 +10399,27 @@ if (response.statusCode == 401) {
               ),
 
               const SizedBox(height: 12),
+
+              // =================================================
+              // LIVENESS CHECK
+              // =================================================
+              ElevatedButton.icon(
+                onPressed: (_processing || _livenessRunning)
+                    ? null
+                    : _runLivenessCheck,
+                icon: Icon(
+                  _livenessPassed ? Icons.verified_user : Icons.remove_red_eye,
+                ),
+                label: Text(
+                  _livenessRunning
+                      ? 'CHECKING LIVENESS...'
+                      : _livenessPassed
+                      ? 'LIVENESS PASSED ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“'
+                      : 'VERIFY LIVE FACE (BLINK)',
+                ),
+              ),
+
+              const SizedBox(height: 10),
 
               // =================================================
               // STATUS
@@ -11935,7 +10715,7 @@ class _EditStudentProfilePageState extends State<EditStudentProfilePage> {
 
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -11945,7 +10725,7 @@ class _EditStudentProfilePageState extends State<EditStudentProfilePage> {
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(14),
                   color: Theme.of(
                     context,
                   ).colorScheme.primary.withValues(alpha: 0.08),
@@ -12101,7 +10881,7 @@ class _EditStudentProfilePageState extends State<EditStudentProfilePage> {
               // NOTE
               // =================================================
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   color: Colors.grey.withValues(alpha: 0.08),
@@ -12161,34 +10941,45 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
     _loadDashboard();
   }
 
+  
   // ============================================================
   // LOAD COMPLETE STUDENT DASHBOARD
   // ============================================================
 
   Future<void> _loadDashboard() async {
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        _errorMessage = '';
-      });
-    }
+    if (!mounted) return;
+
+    setState(() {
+      _loading = true;
+      _errorMessage = '';
+    });
 
     try {
       final prefs = await SharedPreferences.getInstance();
-
       final token = prefs.getString('auth_token');
 
       if (token == null || token.isEmpty) {
-        throw Exception('Authentication token not found. Please login again.');
+        throw Exception(
+          'Authentication token not found. Please login again.',
+        );
       }
 
       final response = await http.get(
         Uri.parse('$backendUrl/student/dashboard'),
-        headers: {'Authorization': 'Bearer $token'},
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      debugPrint(
+        'Dashboard API status: ${response.statusCode}',
       );
 
       if (response.statusCode == 401) {
-        throw Exception('Session expired. Please login again.');
+        throw Exception(
+          'Session expired. Please login again.',
+        );
       }
 
       if (response.statusCode == 403) {
@@ -12198,41 +10989,110 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
       }
 
       if (response.statusCode != 200) {
-        throw Exception('Server returned ${response.statusCode}');
-      }
-
-      final data = jsonDecode(response.body);
-
-      if (data['success'] != true) {
+        debugPrint(
+          'Dashboard API error body: ${response.body}',
+        );
         throw Exception(
-          data['message']?.toString() ?? 'Could not load dashboard',
+          'Server returned ${response.statusCode}. Please try again.',
         );
       }
 
-      final studentData = data['student'];
+      final decoded = jsonDecode(response.body);
 
-      final subjectData = data['subjects'];
+      if (decoded is! Map<String, dynamic>) {
+        throw Exception(
+          'Invalid dashboard response from server.',
+        );
+      }
+
+      if (decoded['success'] != true) {
+        throw Exception(
+          decoded['message']?.toString() ??
+              'Could not load dashboard.',
+        );
+      }
+
+      final studentData = decoded['student'];
+      final subjectData = decoded['subjects'];
+
+      final Map<String, dynamic> parsedStudent =
+          studentData is Map
+              ? Map<String, dynamic>.from(studentData)
+              : <String, dynamic>{};
+
+      final List<Map<String, dynamic>> parsedSubjects = [];
+
+      if (subjectData is List) {
+        for (final item in subjectData) {
+          if (item is Map) {
+            final subject = Map<String, dynamic>.from(item);
+
+            // Normalize subject names and codes for display.
+            final name = subject['subject_name']
+                ?.toString()
+                .trim();
+
+            final code = subject['subject_code']
+                ?.toString()
+                .trim();
+
+            if (name == null || name.isEmpty) {
+              subject['subject_name'] =
+                  (code != null && code.isNotEmpty)
+                      ? code
+                      : 'Unknown Subject';
+            }
+
+            // Normalize attendance keys returned by Flask.
+            subject['present'] ??= subject['present_classes'] ?? 0;
+            subject['total'] ??= subject['total_classes'] ?? 0;
+            subject['percentage'] ??=
+                subject['attendance_percentage'];
+
+            parsedSubjects.add(subject);
+          }
+        }
+      }
+
+      // Diagnostic information: do not print the authentication token.
+      debugPrint(
+        'Dashboard student loaded: ${parsedStudent['student_id']}',
+      );
+      debugPrint(
+        'Dashboard subject count: ${parsedSubjects.length}',
+      );
+
+      for (final subject in parsedSubjects) {
+        debugPrint(
+          'Dashboard subject: '
+          '${subject['subject_code']} - '
+          '${subject['subject_name']}',
+        );
+      }
 
       if (!mounted) return;
 
       setState(() {
-        _student = studentData is Map
-            ? Map<String, dynamic>.from(studentData)
-            : {};
-
-        _subjects = subjectData is List ? List<dynamic>.from(subjectData) : [];
-
+        _student = parsedStudent;
+        _subjects = parsedSubjects;
         _loading = false;
+        _errorMessage = '';
       });
-    } catch (error) {
+    } catch (error, stackTrace) {
+      debugPrint('Dashboard loading error: $error');
+      debugPrintStack(stackTrace: stackTrace);
+
       if (!mounted) return;
 
       setState(() {
         _loading = false;
-        _errorMessage = error.toString().replaceFirst('Exception: ', '');
+        _errorMessage = error
+            .toString()
+            .replaceFirst('Exception: ', '');
       });
     }
   }
+
 
   // ============================================================
   // STUDENT VALUE
@@ -12343,11 +11203,7 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
 
     if (!mounted) return;
 
-    if (updatedStudent is Map) {
-      await _loadDashboard();
-    } else {
-      await _loadDashboard();
-    }
+    await _loadDashboard();
   }
 
   // ============================================================
@@ -12434,10 +11290,10 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
     final email = _studentValue('email');
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.grey.withValues(alpha: 0.16)),
         boxShadow: [
           BoxShadow(
@@ -12717,65 +11573,37 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
   // ============================================================
 
   Widget _subjectCard(Map<String, dynamic> subject, int index) {
-    final name = subject['subject_name']?.toString() ?? '-';
+    final name = (subject['subject_name'] ?? '').toString().trim();
+    final code = (subject['subject_code'] ?? '').toString().trim();
 
-    final code = subject['subject_code']?.toString() ?? '-';
-
-    final presentValue = subject['present'];
-
-    final totalValue = subject['total'];
-
+    final present = int.tryParse(subject['present']?.toString() ?? '') ?? 0;
+    final total = int.tryParse(subject['total']?.toString() ?? '') ?? 0;
     final percentageValue = subject['percentage'];
+    final status = (subject['status'] ?? 'Not started').toString();
 
-    final status = subject['status']?.toString() ?? 'Not started';
-
-    double percentage = 0;
-
-    bool hasClasses = false;
-
-    if (percentageValue != null) {
-      percentage = double.tryParse(percentageValue.toString()) ?? 0;
-    }
-
-    final total = int.tryParse(totalValue?.toString() ?? '') ?? 0;
-
-    final present = int.tryParse(presentValue?.toString() ?? '') ?? 0;
-
-    hasClasses = total > 0;
-
+    double percentage =
+        double.tryParse(percentageValue?.toString() ?? '') ?? 0;
     percentage = percentage.clamp(0, 100);
 
-    // ----------------------------------------------------------
-    // Status styling
-    // ----------------------------------------------------------
+    final hasClasses = total > 0;
 
-    Color statusColor;
-    Color statusBackground;
-    IconData statusIcon;
+    final Color statusColor;
+    final Color statusBackground;
+    final IconData statusIcon;
 
     if (!hasClasses || status.toLowerCase() == 'not started') {
       statusColor = Colors.grey.shade700;
-
       statusBackground = Colors.grey.withValues(alpha: 0.10);
-
       statusIcon = Icons.schedule_outlined;
-    } else if (status == 'Safe') {
+    } else if (status.toLowerCase() == 'safe') {
       statusColor = Colors.green.shade700;
-
       statusBackground = Colors.green.withValues(alpha: 0.10);
-
       statusIcon = Icons.check_circle_outline;
     } else {
       statusColor = Colors.orange.shade800;
-
       statusBackground = Colors.orange.withValues(alpha: 0.12);
-
       statusIcon = Icons.warning_amber_rounded;
     }
-
-    // ----------------------------------------------------------
-    // Subject icon
-    // ----------------------------------------------------------
 
     final primary = Theme.of(context).colorScheme.primary;
 
@@ -12789,16 +11617,8 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
     ];
 
     final subjectColor = subjectColors[index % subjectColors.length];
-
-    // ----------------------------------------------------------
-    // Percentage text
-    // ----------------------------------------------------------
-
-    final percentageText = hasClasses ? '${percentage.round()}%' : 'No classes';
-
-    // ----------------------------------------------------------
-    // Card
-    // ----------------------------------------------------------
+    final percentageText =
+        hasClasses ? '${percentage.round()}%' : 'No classes';
 
     return Container(
       decoration: BoxDecoration(
@@ -12818,9 +11638,6 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --------------------------------------------------
-            // SUBJECT HEADER
-            // --------------------------------------------------
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -12837,75 +11654,69 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
                     size: 23,
                   ),
                 ),
-
                 const SizedBox(width: 9),
-
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        name,
-                        maxLines: 1,
+                        name.isEmpty ? 'Subject name unavailable' : name,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
+                          color: Colors.black,
                         ),
                       ),
-
                       const SizedBox(height: 3),
-
                       Text(
-                        code,
+                        code.isEmpty ? 'Code unavailable' : code,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 10,
-                          color: Colors.grey.shade600,
+                          color: Colors.grey.shade700,
                         ),
                       ),
                     ],
                   ),
                 ),
-
                 const SizedBox(width: 5),
-
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: statusBackground,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(statusIcon, size: 12, color: statusColor),
-
-                      const SizedBox(width: 3),
-
-                      Text(
-                        status,
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: statusColor,
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: statusBackground,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(statusIcon, size: 12, color: statusColor),
+                        const SizedBox(width: 3),
+                        Flexible(
+                          child: Text(
+                            status,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: statusColor,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
-
             const SizedBox(height: 15),
-
-            // --------------------------------------------------
-            // ATTENDANCE DATA
-            // --------------------------------------------------
             Row(
               children: [
                 Expanded(
@@ -12919,20 +11730,18 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
                           color: Colors.grey.shade600,
                         ),
                       ),
-
                       const SizedBox(height: 3),
-
                       Text(
-                        hasClasses ? '$present / $total' : '0 / 0',
+                        '$present / $total',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
+                          color: Colors.black,
                         ),
                       ),
                     ],
                   ),
                 ),
-
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -12944,17 +11753,15 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
                           color: Colors.grey.shade600,
                         ),
                       ),
-
                       const SizedBox(height: 3),
-
                       Text(
                         percentageText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: hasClasses
-                              ? statusColor
-                              : Colors.grey.shade700,
+                          color: hasClasses ? statusColor : Colors.grey.shade700,
                         ),
                       ),
                     ],
@@ -12962,12 +11769,7 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
                 ),
               ],
             ),
-
             const SizedBox(height: 9),
-
-            // --------------------------------------------------
-            // PROGRESS BAR
-            // --------------------------------------------------
             ClipRRect(
               borderRadius: BorderRadius.circular(20),
               child: LinearProgressIndicator(
@@ -12979,19 +11781,13 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
                 ),
               ),
             ),
-
             const SizedBox(height: 4),
-
-            // --------------------------------------------------
-            // VIEW REPORT
-            // --------------------------------------------------
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: () {
-                  final subjectCode = subject['subject_code']
-                      ?.toString()
-                      .trim();
+                  final subjectCode =
+                      subject['subject_code']?.toString().trim();
 
                   if (subjectCode == null || subjectCode.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -12999,7 +11795,6 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
                         content: Text('Subject code is not available.'),
                       ),
                     );
-
                     return;
                   }
 
@@ -13023,9 +11818,7 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-
                     const SizedBox(width: 4),
-
                     Icon(Icons.arrow_forward, size: 14, color: primary),
                   ],
                 ),
@@ -13036,6 +11829,7 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
       ),
     );
   }
+
 
   // ============================================================
   // MY SUBJECTS
@@ -13117,7 +11911,7 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
           borderRadius: BorderRadius.circular(16),
           child: Container(
             height: 112,
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
@@ -13281,7 +12075,7 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
     final primary = Theme.of(context).colorScheme.primary;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         color: primary.withValues(alpha: 0.06),
@@ -13533,14 +12327,14 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
           // GREETING
           // ----------------------------------------------------
           Text(
-            '${_getGreeting()}, $name 👋',
+            '${_getGreeting()}, $name',
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
 
           const SizedBox(height: 5),
 
           Text(
-            'Here\'s your attendance and academic overview',
+            "Here's your attendance and academic overview",
             style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
           ),
 
@@ -14127,7 +12921,7 @@ class _StudentAttendanceReportPageState
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -14226,172 +13020,155 @@ class _StudentAttendanceReportPageState
     );
   }
 
-  Widget _buildSubjectCard(Map<String, dynamic> subject) {
-    final subjectName = subject['subject_name']?.toString() ?? '';
+  
+Widget _buildSubjectCard(Map<String, dynamic> subject) {
+  final subjectCode = subject['subject_code']?.toString() ?? '';
 
-    final subjectCode = subject['subject_code']?.toString() ?? '';
+  final subjectName = (subject['subject_name']?.toString().trim().isNotEmpty == true)
+      ? subject['subject_name'].toString().trim()
+      : subjectCode.isEmpty
+          ? 'Unknown Subject'
+          : subjectCode;
 
-    final total =
-        int.tryParse(subject['total_classes']?.toString() ?? '0') ?? 0;
+  // Match the field names returned by /student/dashboard.
+  final total = int.tryParse(subject['total']?.toString() ?? '0') ?? 0;
+  final present = int.tryParse(subject['present']?.toString() ?? '0') ?? 0;
+  final absent = (total - present).clamp(0, total);
 
-    final present =
-        int.tryParse(subject['present_classes']?.toString() ?? '0') ?? 0;
+  final percentageValue = subject['percentage'];
 
-    final absent =
-        int.tryParse(subject['absent_classes']?.toString() ?? '0') ?? 0;
+  final records = subject['records'] is List
+      ? List<dynamic>.from(subject['records'])
+      : <dynamic>[];
 
-    final percentageValue = subject['attendance_percentage'];
-
-    final percentage = double.tryParse(percentageValue?.toString() ?? '0') ?? 0;
-
-    final records = subject['records'] is List
-        ? List<dynamic>.from(subject['records'])
-        : <dynamic>[];
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        subjectName,
-                        style: const TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.bold,
-                        ),
+  return Card(
+    margin: const EdgeInsets.only(bottom: 16),
+    child: Padding(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      subjectName,
+                      style: const TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.bold,
                       ),
-
-                      const SizedBox(height: 4),
-
-                      Text(subjectCode, style: const TextStyle(fontSize: 13)),
-                    ],
-                  ),
-                ),
-
-                IconButton(
-                  tooltip: 'Download PDF',
-                  onPressed: () => _downloadSubjectPdf(subject),
-                  icon: const Icon(Icons.download),
-                ),
-              ],
-            ),
-
-            const Divider(),
-
-            Row(
-              children: [
-                Expanded(child: _subjectStat('Present', present.toString())),
-                Expanded(child: _subjectStat('Absent', absent.toString())),
-                Expanded(child: _subjectStat('Total', total.toString())),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            Center(
-              child: Text(
-                percentageValue == null
-                    ? 'N/A'
-                    : _formatPercentage(percentageValue),
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            const Text(
-              'Attendance Dates',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-
-            const SizedBox(height: 8),
-
-            if (records.isEmpty)
-              const Text('No classes recorded.')
-            else
-              ...records.map((record) {
-                final item = Map<String, dynamic>.from(record);
-
-                final status = item['status']?.toString() ?? 'absent';
-
-                final statusColor = _statusColor(status);
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Colors.grey.withValues(alpha: 0.3),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.calendar_today, size: 18),
-
-                      const SizedBox(width: 10),
-
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _formatDate(item['attendance_date']),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-
-                            const SizedBox(height: 3),
-
-                            Text(
-                              '${_formatTime(item['start_time'])} - ${_formatTime(item['end_time'])}',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      Text(
-                        status.toUpperCase(),
-                        style: TextStyle(
-                          color: statusColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-
-            const SizedBox(height: 8),
-
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
+                    const SizedBox(height: 4),
+                    Text(
+                      subjectCode,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Download PDF',
                 onPressed: () => _downloadSubjectPdf(subject),
-                icon: const Icon(Icons.picture_as_pdf),
-                label: const Text('DOWNLOAD PDF'),
+                icon: const Icon(Icons.download),
+              ),
+            ],
+          ),
+          const Divider(),
+          Row(
+            children: [
+              Expanded(child: _subjectStat('Present', present.toString())),
+              Expanded(child: _subjectStat('Absent', absent.toString())),
+              Expanded(child: _subjectStat('Total', total.toString())),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: Text(
+              percentageValue == null
+                  ? 'N/A'
+                  : '${percentageValue.toString()}%',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Attendance Dates',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          if (records.isEmpty)
+            const Text('No classes recorded.')
+          else
+            ...records.map((record) {
+              final item = Map<String, dynamic>.from(record);
+              final status = item['status']?.toString() ?? 'absent';
+              final statusColor = _statusColor(status);
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_today, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _formatDate(item['attendance_date']),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '${_formatTime(item['start_time'])} - ${_formatTime(item['end_time'])}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      status.toUpperCase(),
+                      style: TextStyle(
+                        color: statusColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _downloadSubjectPdf(subject),
+              icon: const Icon(Icons.picture_as_pdf),
+              label: const Text('DOWNLOAD PDF'),
+            ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _subjectStat(String title, String value) {
     return Column(
@@ -14456,7 +13233,7 @@ class _StudentAttendanceReportPageState
           : RefreshIndicator(
               onRefresh: _loadReport,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 children: [
                   _buildSummaryCard(),
 
@@ -14483,7 +13260,9 @@ class _StudentAttendanceReportPageState
   }
 }
 // ============================================================
+
 // FACULTY ATTENDANCE REPORT PAGE STATE
+
 // ============================================================
 
 class _FacultyAttendanceReportPageState
@@ -14491,11 +13270,12 @@ class _FacultyAttendanceReportPageState
   bool _loading = true;
 
   String? _errorMessage;
-
   List<dynamic> _reports = [];
 
   // ============================================================
+
   // INIT
+
   // ============================================================
 
   @override
@@ -14505,7 +13285,9 @@ class _FacultyAttendanceReportPageState
   }
 
   // ============================================================
+
   // SAFE INT CONVERSION
+
   // ============================================================
 
   int _toInt(dynamic value) {
@@ -14525,7 +13307,9 @@ class _FacultyAttendanceReportPageState
   }
 
   // ============================================================
+
   // SAFE DOUBLE CONVERSION
+
   // ============================================================
 
   double _toDouble(dynamic value) {
@@ -14545,7 +13329,9 @@ class _FacultyAttendanceReportPageState
   }
 
   // ============================================================
+
   // SAFE STRING CONVERSION
+
   // ============================================================
 
   String _toStringValue(dynamic value) {
@@ -14561,7 +13347,9 @@ class _FacultyAttendanceReportPageState
   }
 
   // ============================================================
+
   // LOAD REPORTS
+
   // ============================================================
 
   Future<void> _loadReports() async {
@@ -14576,9 +13364,7 @@ class _FacultyAttendanceReportPageState
 
     try {
       debugPrint('================================================');
-
       debugPrint('LOADING FACULTY ATTENDANCE REPORTS');
-
       debugPrint('Faculty ID: ${widget.userId}');
 
       final String url =
@@ -14586,10 +13372,12 @@ class _FacultyAttendanceReportPageState
 
       debugPrint('REPORT URL: $url');
 
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Accept': 'application/json'},
+      );
 
       debugPrint('REPORT STATUS: ${response.statusCode}');
-
       debugPrint('REPORT BODY: ${response.body}');
 
       if (response.statusCode != 200) {
@@ -14598,26 +13386,36 @@ class _FacultyAttendanceReportPageState
 
       final dynamic decoded = jsonDecode(response.body);
 
-      if (decoded is List) {
-        _reports = List<dynamic>.from(decoded);
-      } else if (decoded is Map) {
-        final Map<String, dynamic> data = Map<String, dynamic>.from(decoded);
+      List<dynamic> loadedReports = [];
 
-        if (data['reports'] is List) {
-          _reports = List<dynamic>.from(data['reports']);
-        } else if (data['data'] is List) {
-          _reports = List<dynamic>.from(data['data']);
-        } else {
-          _reports = [data];
+      if (decoded is Map) {
+        final dynamic reportsValue = decoded['reports'];
+
+        if (reportsValue is List) {
+          loadedReports = List<dynamic>.from(reportsValue);
         }
-      } else {
-        _reports = [];
+      } else if (decoded is List) {
+        loadedReports = List<dynamic>.from(decoded);
       }
 
-      debugPrint('TOTAL REPORT GROUPS: ${_reports.length}');
+      debugPrint('TOTAL REPORT GROUPS: ${loadedReports.length}');
 
-      for (int i = 0; i < _reports.length; i++) {
-        debugPrint('REPORT ${i + 1}: ${_reports[i]}');
+      for (int i = 0; i < loadedReports.length; i++) {
+        final dynamic report = loadedReports[i];
+
+        if (report is Map) {
+          final dynamic session = report['session'];
+
+          if (session is Map) {
+            debugPrint(
+              'REPORT ${i + 1}: '
+              '${session['subject_code']} | '
+              'Sessions: ${report['session_count']}',
+            );
+          } else {
+            debugPrint('REPORT ${i + 1}: $report');
+          }
+        }
       }
 
       if (!mounted) {
@@ -14625,7 +13423,9 @@ class _FacultyAttendanceReportPageState
       }
 
       setState(() {
+        _reports = loadedReports;
         _loading = false;
+        _errorMessage = null;
       });
     } catch (e) {
       debugPrint('REPORT ERROR: $e');
@@ -14635,6 +13435,7 @@ class _FacultyAttendanceReportPageState
       }
 
       setState(() {
+        _reports = [];
         _loading = false;
         _errorMessage = e.toString();
       });
@@ -14642,25 +13443,35 @@ class _FacultyAttendanceReportPageState
   }
 
   // ============================================================
+
   // DOWNLOAD BUTTON
+
   // ============================================================
 
   Widget _buildDownloadButton({
     required String label,
+
     required IconData icon,
+
     required VoidCallback onPressed,
   }) {
     return SizedBox(
       width: double.infinity,
+
       child: ElevatedButton.icon(
         onPressed: onPressed,
+
         icon: Icon(icon, size: 21),
+
         label: Text(
           label,
+
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),
+
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 16),
+
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -14670,20 +13481,27 @@ class _FacultyAttendanceReportPageState
   }
 
   // ============================================================
+
   // DOWNLOAD SESSION PDF
+
   // ============================================================
 
   Future<void> _downloadSessionPdf({
     required Map<String, dynamic> session,
+
     required int sessionNumber,
+
     required String subjectName,
+
     required String subjectCode,
   }) async {
     try {
       final pdf = pw.Document();
 
       // ----------------------------------------------------------
+
       // SESSION DETAILS
+
       // ----------------------------------------------------------
 
       final String semester = _toStringValue(session['semester']);
@@ -14699,7 +13517,9 @@ class _FacultyAttendanceReportPageState
       final String status = _toStringValue(session['status']);
 
       // ----------------------------------------------------------
+
       // TEACHER LOCATION
+
       // ----------------------------------------------------------
 
       final String latitude = _toStringValue(
@@ -14711,7 +13531,9 @@ class _FacultyAttendanceReportPageState
       );
 
       // ----------------------------------------------------------
+
       // CLASSROOM DIMENSIONS
+
       // ----------------------------------------------------------
 
       final double classroomLength = _toDouble(session['classroom_length']);
@@ -14719,7 +13541,9 @@ class _FacultyAttendanceReportPageState
       final double classroomWidth = _toDouble(session['classroom_width']);
 
       // ----------------------------------------------------------
+
       // STUDENT DATA
+
       // ----------------------------------------------------------
 
       final dynamic studentsValue = session['students'];
@@ -14729,7 +13553,9 @@ class _FacultyAttendanceReportPageState
           : <dynamic>[];
 
       int present = 0;
+
       int absent = 0;
+
       int late = 0;
 
       for (final student in students) {
@@ -14757,7 +13583,9 @@ class _FacultyAttendanceReportPageState
           : 0.0;
 
       // ==========================================================
+
       // PDF PAGE
+
       // ==========================================================
 
       pdf.addPage(
@@ -14765,13 +13593,17 @@ class _FacultyAttendanceReportPageState
           build: (context) {
             return [
               // --------------------------------------------------
+
               // TITLE
+
               // --------------------------------------------------
               pw.Center(
                 child: pw.Text(
                   'ATTENDANCE REPORT',
+
                   style: pw.TextStyle(
                     fontSize: 20,
+
                     fontWeight: pw.FontWeight.bold,
                   ),
                 ),
@@ -14780,12 +13612,16 @@ class _FacultyAttendanceReportPageState
               pw.SizedBox(height: 15),
 
               // --------------------------------------------------
+
               // SUBJECT DETAILS
+
               // --------------------------------------------------
               pw.Text(
                 'Subject: $subjectName',
+
                 style: pw.TextStyle(
                   fontSize: 14,
+
                   fontWeight: pw.FontWeight.bold,
                 ),
               ),
@@ -14799,10 +13635,13 @@ class _FacultyAttendanceReportPageState
               pw.SizedBox(height: 10),
 
               // --------------------------------------------------
+
               // SESSION DETAILS
+
               // --------------------------------------------------
               pw.Text(
                 'Session: $sessionNumber',
+
                 style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
               ),
 
@@ -14815,30 +13654,38 @@ class _FacultyAttendanceReportPageState
               pw.SizedBox(height: 8),
 
               // --------------------------------------------------
+
               // TEACHER LOCATION
+
               // --------------------------------------------------
               pw.Text('Teacher Latitude: $latitude'),
 
               pw.Text('Teacher Longitude: $longitude'),
 
               // --------------------------------------------------
+
               // CLASSROOM DIMENSIONS
+
               // --------------------------------------------------
               pw.Text(
                 'Classroom Size: '
-                '${classroomLength.toStringAsFixed(1)} m × '
+                '${classroomLength.toStringAsFixed(1)} m ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â '
                 '${classroomWidth.toStringAsFixed(1)} m',
               ),
 
               pw.SizedBox(height: 18),
 
               // --------------------------------------------------
+
               // ATTENDANCE SUMMARY
+
               // --------------------------------------------------
               pw.Text(
                 'Attendance Summary',
+
                 style: pw.TextStyle(
                   fontSize: 15,
+
                   fontWeight: pw.FontWeight.bold,
                 ),
               ),
@@ -14847,13 +13694,18 @@ class _FacultyAttendanceReportPageState
 
               pw.Table(
                 border: pw.TableBorder.all(),
+
                 children: [
                   pw.TableRow(
                     children: [
                       _pdfCell('Present', bold: true),
+
                       _pdfCell('Absent', bold: true),
+
                       _pdfCell('Late', bold: true),
+
                       _pdfCell('Total', bold: true),
+
                       _pdfCell('Attendance %', bold: true),
                     ],
                   ),
@@ -14861,9 +13713,13 @@ class _FacultyAttendanceReportPageState
                   pw.TableRow(
                     children: [
                       _pdfCell(present.toString()),
+
                       _pdfCell(absent.toString()),
+
                       _pdfCell(late.toString()),
+
                       _pdfCell(total.toString()),
+
                       _pdfCell('${percentage.toStringAsFixed(2)}%'),
                     ],
                   ),
@@ -14873,12 +13729,16 @@ class _FacultyAttendanceReportPageState
               pw.SizedBox(height: 20),
 
               // --------------------------------------------------
+
               // STUDENT ATTENDANCE
+
               // --------------------------------------------------
               pw.Text(
                 'Student Attendance',
+
                 style: pw.TextStyle(
                   fontSize: 15,
+
                   fontWeight: pw.FontWeight.bold,
                 ),
               ),
@@ -14887,6 +13747,7 @@ class _FacultyAttendanceReportPageState
 
               pw.Table.fromTextArray(
                 headers: ['USN', 'Name', 'Status', 'Face', 'GPS'],
+
                 data: students.map((student) {
                   if (student is! Map) {
                     return ['-', '-', '-', '-', '-'];
@@ -14898,9 +13759,13 @@ class _FacultyAttendanceReportPageState
 
                   return [
                     _toStringValue(map['usn']),
+
                     _toStringValue(map['student_name']),
+
                     _toStringValue(map['status']),
+
                     map['face_verified'] == true ? 'Verified' : 'No',
+
                     map['gps_verified'] == true ? 'Verified' : 'No',
                   ];
                 }).toList(),
@@ -14909,6 +13774,7 @@ class _FacultyAttendanceReportPageState
 
                 headerStyle: pw.TextStyle(
                   fontSize: 8,
+
                   fontWeight: pw.FontWeight.bold,
                 ),
 
@@ -14920,7 +13786,9 @@ class _FacultyAttendanceReportPageState
       );
 
       // ==========================================================
+
       // SAVE PDF
+
       // ==========================================================
 
       final Uint8List bytes = await pdf.save();
@@ -14942,16 +13810,21 @@ class _FacultyAttendanceReportPageState
   }
 
   // ============================================================
+
   // PDF TABLE CELL
+
   // ============================================================
 
   pw.Widget _pdfCell(String text, {bool bold = false}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.all(6),
+
       child: pw.Text(
         text,
+
         style: pw.TextStyle(
           fontSize: 9,
+
           fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
         ),
       ),
@@ -14959,22 +13832,31 @@ class _FacultyAttendanceReportPageState
   }
 
   // ============================================================
+
   // DOWNLOAD SUBJECT SUMMARY PDF
+
   // ============================================================
 
   Future<void> _downloadSubjectSummaryPdf({
     required Map<String, dynamic> report,
+
     required List<dynamic> sessions,
+
     required String subjectName,
+
     required String subjectCode,
+
     required String semester,
+
     required String division,
   }) async {
     try {
       final pdf = pw.Document();
 
       // ========================================================
+
       // STUDENT AGGREGATION
+
       // ========================================================
 
       final Map<String, Map<String, dynamic>> studentSummary = {};
@@ -15010,7 +13892,9 @@ class _FacultyAttendanceReportPageState
           final String name = _toStringValue(student['student_name']);
 
           // ----------------------------------------------------
+
           // IDENTIFY STUDENT
+
           // ----------------------------------------------------
 
           final String key = usn.isNotEmpty
@@ -15020,8 +13904,11 @@ class _FacultyAttendanceReportPageState
           if (!studentSummary.containsKey(key)) {
             studentSummary[key] = {
               'usn': usn,
+
               'name': name,
+
               'attended': 0,
+
               'absent': 0,
             };
           }
@@ -15031,7 +13918,9 @@ class _FacultyAttendanceReportPageState
           ).trim().toLowerCase();
 
           // ----------------------------------------------------
+
           // ATTENDANCE COUNT
+
           // ----------------------------------------------------
 
           if (studentStatus == 'present' || studentStatus == 'late') {
@@ -15045,25 +13934,32 @@ class _FacultyAttendanceReportPageState
       }
 
       // ========================================================
+
       // TOTAL CLASSES
+
       // ========================================================
 
       final int totalClasses = sessions.length;
 
       // ========================================================
+
       // PDF
+
       // ========================================================
 
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
+
           build: (context) {
             return [
               pw.Center(
                 child: pw.Text(
                   'SESSION SUMMARY',
+
                   style: pw.TextStyle(
                     fontSize: 20,
+
                     fontWeight: pw.FontWeight.bold,
                   ),
                 ),
@@ -15073,8 +13969,10 @@ class _FacultyAttendanceReportPageState
 
               pw.Text(
                 'Subject: $subjectName',
+
                 style: pw.TextStyle(
                   fontSize: 13,
+
                   fontWeight: pw.FontWeight.bold,
                 ),
               ),
@@ -15090,17 +13988,25 @@ class _FacultyAttendanceReportPageState
               pw.SizedBox(height: 20),
 
               // =================================================
+
               // SUMMARY TABLE
+
               // =================================================
               pw.TableHelper.fromTextArray(
                 headers: [
                   'USN',
+
                   'Name',
+
                   'Classes Attended',
+
                   'Classes Absent',
+
                   'Total Classes',
+
                   'Attendance %',
                 ],
+
                 data: studentSummary.values.map((student) {
                   final int attended = _toInt(student['attended']);
 
@@ -15112,20 +14018,31 @@ class _FacultyAttendanceReportPageState
 
                   return [
                     _toStringValue(student['usn']),
+
                     _toStringValue(student['name']),
+
                     attended.toString(),
+
                     absent.toString(),
+
                     totalClasses.toString(),
+
                     '${percentage.toStringAsFixed(2)}%',
                   ];
                 }).toList(),
+
                 border: pw.TableBorder.all(),
+
                 cellStyle: const pw.TextStyle(fontSize: 8),
+
                 headerStyle: pw.TextStyle(
                   fontSize: 8,
+
                   fontWeight: pw.FontWeight.bold,
                 ),
+
                 cellPadding: const pw.EdgeInsets.all(5),
+
                 headerDecoration: const pw.BoxDecoration(),
               ),
 
@@ -15133,6 +14050,7 @@ class _FacultyAttendanceReportPageState
 
               pw.Text(
                 'Generated by AntiProxy Smart Attendance',
+
                 style: const pw.TextStyle(fontSize: 9),
               ),
             ];
@@ -15159,7 +14077,9 @@ class _FacultyAttendanceReportPageState
   }
 
   // ============================================================
+
   // SESSION REPORT
+
   // ============================================================
 
   Widget _buildSessionReport(dynamic report) {
@@ -15170,7 +14090,9 @@ class _FacultyAttendanceReportPageState
     final Map<String, dynamic> reportMap = Map<String, dynamic>.from(report);
 
     // ----------------------------------------------------------
+
     // SUBJECT INFORMATION
+
     // ----------------------------------------------------------
 
     final dynamic sessionValue = reportMap['session'];
@@ -15196,7 +14118,9 @@ class _FacultyAttendanceReportPageState
     );
 
     // ----------------------------------------------------------
+
     // READ ALL SESSIONS
+
     // ----------------------------------------------------------
 
     final dynamic sessionsValue = reportMap['sessions'];
@@ -15213,34 +14137,50 @@ class _FacultyAttendanceReportPageState
     );
 
     // ----------------------------------------------------------
+
     // SUBJECT CARD
+
     // ----------------------------------------------------------
 
     return Card(
       margin: const EdgeInsets.only(bottom: 24),
+
       elevation: 3,
+
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(14),
+
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+
           children: [
             // ==================================================
+
             // SUBJECT HEADER
+
             // ==================================================
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
+
               children: [
                 Container(
                   width: 56,
+
                   height: 56,
+
                   decoration: BoxDecoration(
                     color: Colors.indigo.shade100,
+
                     shape: BoxShape.circle,
                   ),
+
                   child: Icon(
                     Icons.book,
+
                     color: Colors.indigo.shade700,
+
                     size: 30,
                   ),
                 ),
@@ -15250,11 +14190,14 @@ class _FacultyAttendanceReportPageState
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+
                     children: [
                       Text(
                         subjectName.isEmpty ? 'Subject' : subjectName,
+
                         style: const TextStyle(
                           fontSize: 28,
+
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -15263,9 +14206,12 @@ class _FacultyAttendanceReportPageState
 
                       Text(
                         subjectCode,
+
                         style: TextStyle(
                           fontSize: 17,
+
                           color: Colors.grey.shade700,
+
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -15273,9 +14219,11 @@ class _FacultyAttendanceReportPageState
                       const SizedBox(height: 6),
 
                       Text(
-                        'Semester $semester • Division $division',
+                        'Semester $semester ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ Division $division',
+
                         style: TextStyle(
                           fontSize: 16,
+
                           color: Colors.grey.shade600,
                         ),
                       ),
@@ -15288,20 +14236,28 @@ class _FacultyAttendanceReportPageState
             const SizedBox(height: 18),
 
             // ==================================================
+
             // TOTAL SESSIONS
+
             // ==================================================
             Container(
               width: double.infinity,
+
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+
               decoration: BoxDecoration(
                 color: Colors.indigo.shade50,
+
                 borderRadius: BorderRadius.circular(14),
               ),
+
               child: Row(
                 children: [
                   Icon(
                     Icons.library_books,
+
                     color: Colors.indigo.shade700,
+
                     size: 28,
                   ),
 
@@ -15310,8 +14266,10 @@ class _FacultyAttendanceReportPageState
                   const Expanded(
                     child: Text(
                       'Total sessions',
+
                       style: TextStyle(
                         fontSize: 17,
+
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -15319,9 +14277,12 @@ class _FacultyAttendanceReportPageState
 
                   Text(
                     sessions.length.toString(),
+
                     style: TextStyle(
                       fontSize: 26,
+
                       fontWeight: FontWeight.bold,
+
                       color: Colors.indigo.shade700,
                     ),
                   ),
@@ -15332,18 +14293,27 @@ class _FacultyAttendanceReportPageState
             const SizedBox(height: 14),
 
             // ==================================================
+
             // SUBJECT SUMMARY DOWNLOAD
+
             // ==================================================
             _buildDownloadButton(
               label: 'Download Subject Summary',
+
               icon: Icons.summarize,
+
               onPressed: () {
                 _downloadSubjectSummaryPdf(
                   report: reportMap,
+
                   sessions: sessions,
+
                   subjectName: subjectName,
+
                   subjectCode: subjectCode,
+
                   semester: semester,
+
                   division: division,
                 );
               },
@@ -15352,7 +14322,9 @@ class _FacultyAttendanceReportPageState
             const SizedBox(height: 24),
 
             // ==================================================
+
             // EACH SESSION
+
             // ==================================================
             ...List.generate(sessions.length, (index) {
               final dynamic sessionValue = sessions[index];
@@ -15367,8 +14339,11 @@ class _FacultyAttendanceReportPageState
 
               return _buildIndividualSession(
                 session,
+
                 index + 1,
+
                 subjectName,
+
                 subjectCode,
               );
             }),
@@ -15379,17 +14354,24 @@ class _FacultyAttendanceReportPageState
   }
 
   // ============================================================
+
   // INDIVIDUAL SESSION
+
   // ============================================================
 
   Widget _buildIndividualSession(
     Map<String, dynamic> session,
+
     int sessionNumber,
+
     String subjectName,
+
     String subjectCode,
   ) {
     // ----------------------------------------------------------
+
     // SUMMARY
+
     // ----------------------------------------------------------
 
     final dynamic summaryValue = session['summary'];
@@ -15399,7 +14381,9 @@ class _FacultyAttendanceReportPageState
         : <String, dynamic>{};
 
     // ----------------------------------------------------------
+
     // STUDENTS
+
     // ----------------------------------------------------------
 
     final dynamic studentsValue = session['students'];
@@ -15409,7 +14393,9 @@ class _FacultyAttendanceReportPageState
         : <dynamic>[];
 
     // ----------------------------------------------------------
+
     // COUNTS
+
     // ----------------------------------------------------------
 
     int totalStudents = _toInt(
@@ -15427,14 +14413,18 @@ class _FacultyAttendanceReportPageState
     );
 
     // ----------------------------------------------------------
+
     // FALLBACK FROM STUDENTS
+
     // ----------------------------------------------------------
 
     if (students.isNotEmpty) {
       totalStudents = students.length;
 
       presentCount = 0;
+
       absentCount = 0;
+
       lateCount = 0;
 
       for (final student in students) {
@@ -15461,7 +14451,9 @@ class _FacultyAttendanceReportPageState
     }
 
     // ----------------------------------------------------------
+
     // SESSION INFORMATION
+
     // ----------------------------------------------------------
 
     final String attendanceDate = _toStringValue(session['attendance_date']);
@@ -15473,7 +14465,9 @@ class _FacultyAttendanceReportPageState
     final String status = _toStringValue(session['status']);
 
     // ==========================================================
+
     // LOCATION
+
     // ==========================================================
 
     final dynamic lengthValue = session['classroom_length'];
@@ -15495,42 +14489,62 @@ class _FacultyAttendanceReportPageState
     final String longitude = _toStringValue(longitudeValue);
 
     // ==========================================================
+
     // SESSION CARD
+
     // ==========================================================
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
+
       padding: const EdgeInsets.all(18),
+
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(18),
+
+        borderRadius: BorderRadius.circular(14),
+
         border: Border.all(color: Colors.grey.shade300),
       ),
+
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+
         children: [
           // ==================================================
+
           // DATE + SESSION NUMBER
+
           // ==================================================
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+
+            padding: const EdgeInsets.all(14),
+
             decoration: BoxDecoration(
               color: Colors.indigo.shade50,
+
               borderRadius: BorderRadius.circular(14),
             ),
+
             child: Row(
               children: [
                 Container(
                   width: 48,
+
                   height: 48,
+
                   decoration: BoxDecoration(
                     color: Colors.indigo.shade100,
+
                     shape: BoxShape.circle,
                   ),
+
                   child: Icon(
                     Icons.calendar_today,
+
                     color: Colors.indigo.shade700,
+
                     size: 24,
                   ),
                 ),
@@ -15540,14 +14554,18 @@ class _FacultyAttendanceReportPageState
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+
                     children: [
                       Text(
                         attendanceDate.isEmpty
                             ? 'Date not available'
                             : attendanceDate,
+
                         style: TextStyle(
                           fontSize: 15,
+
                           color: Colors.grey.shade700,
+
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -15556,8 +14574,10 @@ class _FacultyAttendanceReportPageState
 
                       Text(
                         'Session $sessionNumber',
+
                         style: const TextStyle(
                           fontSize: 23,
+
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -15569,19 +14589,26 @@ class _FacultyAttendanceReportPageState
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
+
                       vertical: 7,
                     ),
+
                     decoration: BoxDecoration(
                       color: status.toLowerCase() == 'active'
                           ? Colors.green.shade100
                           : Colors.grey.shade200,
+
                       borderRadius: BorderRadius.circular(20),
                     ),
+
                     child: Text(
                       status.toUpperCase(),
+
                       style: TextStyle(
                         fontSize: 11,
+
                         fontWeight: FontWeight.bold,
+
                         color: status.toLowerCase() == 'active'
                             ? Colors.green.shade800
                             : Colors.grey.shade700,
@@ -15595,16 +14622,23 @@ class _FacultyAttendanceReportPageState
           const SizedBox(height: 18),
 
           // ==================================================
+
           // DOWNLOAD SESSION BUTTON
+
           // ==================================================
           _buildDownloadButton(
             label: 'Download Session $sessionNumber',
+
             icon: Icons.download,
+
             onPressed: () {
               _downloadSessionPdf(
                 session: session,
+
                 sessionNumber: sessionNumber,
+
                 subjectName: subjectName,
+
                 subjectCode: subjectCode,
               );
             },
@@ -15613,10 +14647,13 @@ class _FacultyAttendanceReportPageState
           const SizedBox(height: 20),
 
           // ==================================================
+
           // SESSION INFORMATION
+
           // ==================================================
           const Text(
             'Session Information',
+
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
 
@@ -15628,43 +14665,56 @@ class _FacultyAttendanceReportPageState
 
           _buildInfoRow(
             Icons.school,
+
             'Semester',
+
             _toStringValue(session['semester']),
           ),
 
           _buildInfoRow(
             Icons.groups,
+
             'Division',
+
             _toStringValue(session['division']),
           ),
 
           _buildInfoRow(
             Icons.location_on,
-            'Geofence radius',
+
+            'Classroom perimeter',
+
             'Classroom Size: '
-                '${classroomLength.toStringAsFixed(1)} m × '
+                '${classroomLength.toStringAsFixed(1)} m ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â '
                 '${classroomWidth.toStringAsFixed(1)} m',
           ),
 
           _buildInfoRow(
             Icons.location_pin,
+
             'Teacher latitude',
+
             latitude.isEmpty ? 'Not available' : latitude,
           ),
 
           _buildInfoRow(
             Icons.location_pin,
+
             'Teacher longitude',
+
             longitude.isEmpty ? 'Not available' : longitude,
           ),
 
           const SizedBox(height: 18),
 
           // ==================================================
+
           // ATTENDANCE SUMMARY
+
           // ==================================================
           const Text(
             'Attendance Summary',
+
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
 
@@ -15675,8 +14725,11 @@ class _FacultyAttendanceReportPageState
               Expanded(
                 child: _buildSummaryCard(
                   icon: Icons.check_circle,
+
                   value: presentCount,
+
                   label: 'Present',
+
                   color: Colors.green,
                 ),
               ),
@@ -15686,8 +14739,11 @@ class _FacultyAttendanceReportPageState
               Expanded(
                 child: _buildSummaryCard(
                   icon: Icons.cancel,
+
                   value: absentCount,
+
                   label: 'Absent',
+
                   color: Colors.red,
                 ),
               ),
@@ -15697,8 +14753,11 @@ class _FacultyAttendanceReportPageState
               Expanded(
                 child: _buildSummaryCard(
                   icon: Icons.access_time,
+
                   value: lateCount,
+
                   label: 'Late',
+
                   color: Colors.orange,
                 ),
               ),
@@ -15708,15 +14767,21 @@ class _FacultyAttendanceReportPageState
           const SizedBox(height: 16),
 
           // ==================================================
+
           // TOTAL STUDENTS
+
           // ==================================================
           Container(
             width: double.infinity,
+
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+
             decoration: BoxDecoration(
               color: Colors.lightBlue.shade50,
+
               borderRadius: BorderRadius.circular(14),
             ),
+
             child: Row(
               children: [
                 Icon(Icons.groups, color: Colors.lightBlue.shade700, size: 28),
@@ -15726,15 +14791,19 @@ class _FacultyAttendanceReportPageState
                 const Expanded(
                   child: Text(
                     'Total students',
+
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                   ),
                 ),
 
                 Text(
                   totalStudents.toString(),
+
                   style: TextStyle(
                     fontSize: 26,
+
                     fontWeight: FontWeight.bold,
+
                     color: Colors.lightBlue.shade700,
                   ),
                 ),
@@ -15745,15 +14814,21 @@ class _FacultyAttendanceReportPageState
           const SizedBox(height: 12),
 
           // ==================================================
+
           // ATTENDANCE PERCENTAGE
+
           // ==================================================
           Container(
             width: double.infinity,
+
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+
             decoration: BoxDecoration(
               color: Colors.indigo.shade50,
+
               borderRadius: BorderRadius.circular(14),
             ),
+
             child: Row(
               children: [
                 Icon(Icons.percent, color: Colors.indigo.shade700, size: 28),
@@ -15763,15 +14838,19 @@ class _FacultyAttendanceReportPageState
                 const Expanded(
                   child: Text(
                     'Attendance percentage',
+
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                   ),
                 ),
 
                 Text(
                   '${attendancePercentage.toStringAsFixed(2)}%',
+
                   style: TextStyle(
                     fontSize: 24,
+
                     fontWeight: FontWeight.bold,
+
                     color: Colors.indigo.shade700,
                   ),
                 ),
@@ -15782,10 +14861,13 @@ class _FacultyAttendanceReportPageState
           const SizedBox(height: 20),
 
           // ==================================================
+
           // STUDENT ATTENDANCE
+
           // ==================================================
           const Text(
             'Student Attendance',
+
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
 
@@ -15794,14 +14876,20 @@ class _FacultyAttendanceReportPageState
           if (students.isEmpty)
             Container(
               width: double.infinity,
+
               padding: const EdgeInsets.all(18),
+
               decoration: BoxDecoration(
                 color: Colors.white,
+
                 borderRadius: BorderRadius.circular(12),
+
                 border: Border.all(color: Colors.grey.shade200),
               ),
+
               child: Text(
                 'No student attendance records found for this session.',
+
                 style: TextStyle(color: Colors.grey.shade600),
               ),
             )
@@ -15821,17 +14909,22 @@ class _FacultyAttendanceReportPageState
   }
 
   // ============================================================
+
   // INFO ROW
+
   // ============================================================
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
+
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
+
         children: [
           SizedBox(
             width: 38,
+
             child: Icon(icon, color: Colors.indigo, size: 28),
           ),
 
@@ -15839,11 +14932,15 @@ class _FacultyAttendanceReportPageState
 
           Expanded(
             flex: 5,
+
             child: Text(
               label,
+
               style: TextStyle(
                 fontSize: 17,
+
                 fontWeight: FontWeight.w600,
+
                 color: Colors.grey.shade700,
               ),
             ),
@@ -15853,10 +14950,14 @@ class _FacultyAttendanceReportPageState
 
           Expanded(
             flex: 5,
+
             child: Text(
               value,
+
               textAlign: TextAlign.right,
+
               softWrap: true,
+
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w500),
             ),
           ),
@@ -15866,28 +14967,39 @@ class _FacultyAttendanceReportPageState
   }
 
   // ============================================================
+
   // SUMMARY CARD
+
   // ============================================================
 
   Widget _buildSummaryCard({
     required IconData icon,
+
     required int value,
+
     required String label,
+
     required Color color,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
+
       decoration: BoxDecoration(
         color: Colors.white,
+
         borderRadius: BorderRadius.circular(16),
+
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.10),
+
             blurRadius: 6,
+
             offset: const Offset(0, 3),
           ),
         ],
       ),
+
       child: Column(
         children: [
           Icon(icon, color: color, size: 34),
@@ -15896,9 +15008,12 @@ class _FacultyAttendanceReportPageState
 
           Text(
             value.toString(),
+
             style: TextStyle(
               fontSize: 30,
+
               fontWeight: FontWeight.bold,
+
               color: color,
             ),
           ),
@@ -15907,6 +15022,7 @@ class _FacultyAttendanceReportPageState
 
           Text(
             label,
+
             style: TextStyle(fontSize: 15, color: Colors.grey.shade700),
           ),
         ],
@@ -15915,7 +15031,9 @@ class _FacultyAttendanceReportPageState
   }
 
   // ============================================================
+
   // STUDENT ATTENDANCE
+
   // ============================================================
 
   Widget _buildStudentAttendance(Map<String, dynamic> student) {
@@ -15946,10 +15064,12 @@ class _FacultyAttendanceReportPageState
     switch (status.toLowerCase()) {
       case 'present':
         statusColor = Colors.green;
+
         break;
 
       case 'late':
         statusColor = Colors.orange;
+
         break;
 
       default:
@@ -15958,35 +15078,50 @@ class _FacultyAttendanceReportPageState
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+
+      padding: const EdgeInsets.all(14),
+
       decoration: BoxDecoration(
         color: Colors.white,
+
         borderRadius: BorderRadius.circular(16),
+
         border: Border.all(color: Colors.grey.shade200),
       ),
+
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+
         children: [
           // ==================================================
+
           // STUDENT HEADER
+
           // ==================================================
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
+
             children: [
               Container(
                 width: 48,
+
                 height: 48,
+
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.10),
+
                   shape: BoxShape.circle,
                 ),
+
                 child: Icon(
                   status.toLowerCase() == 'present'
                       ? Icons.check
                       : status.toLowerCase() == 'late'
                       ? Icons.access_time
                       : Icons.close,
+
                   color: statusColor,
+
                   size: 26,
                 ),
               ),
@@ -15996,11 +15131,14 @@ class _FacultyAttendanceReportPageState
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+
                   children: [
                     Text(
                       name,
+
                       style: const TextStyle(
                         fontSize: 17,
+
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -16009,8 +15147,10 @@ class _FacultyAttendanceReportPageState
 
                     Text(
                       usn,
+
                       style: TextStyle(
                         fontSize: 14,
+
                         color: Colors.grey.shade600,
                       ),
                     ),
@@ -16021,16 +15161,22 @@ class _FacultyAttendanceReportPageState
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 11,
+
                   vertical: 6,
                 ),
+
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.10),
+
                   borderRadius: BorderRadius.circular(20),
                 ),
+
                 child: Text(
                   status,
+
                   style: TextStyle(
                     color: statusColor,
+
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -16039,7 +15185,9 @@ class _FacultyAttendanceReportPageState
           ),
 
           // ==================================================
+
           // MARKED DATE/TIME
+
           // ==================================================
           if (status.toLowerCase() != 'absent' &&
               attendanceDate != null &&
@@ -16051,26 +15199,34 @@ class _FacultyAttendanceReportPageState
               'Marked: '
               '${attendanceDate.toString()}'
               '${attendanceTime != null ? ' ${attendanceTime.toString()}' : ''}',
+
               style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
             ),
           ],
 
           // ==================================================
+
           // VERIFICATION
+
           // ==================================================
           if (status.toLowerCase() != 'absent') ...[
             const SizedBox(height: 12),
 
             Wrap(
               spacing: 18,
+
               runSpacing: 8,
+
               children: [
                 Row(
                   mainAxisSize: MainAxisSize.min,
+
                   children: [
                     Icon(
                       faceVerified ? Icons.face : Icons.face_retouching_off,
+
                       color: faceVerified ? Colors.green : Colors.red,
+
                       size: 20,
                     ),
 
@@ -16078,8 +15234,10 @@ class _FacultyAttendanceReportPageState
 
                     Text(
                       faceVerified ? 'Face verified' : 'Face not verified',
+
                       style: TextStyle(
                         color: faceVerified ? Colors.green : Colors.red,
+
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -16088,10 +15246,13 @@ class _FacultyAttendanceReportPageState
 
                 Row(
                   mainAxisSize: MainAxisSize.min,
+
                   children: [
                     Icon(
                       gpsVerified ? Icons.location_on : Icons.location_off,
+
                       color: gpsVerified ? Colors.green : Colors.red,
+
                       size: 20,
                     ),
 
@@ -16099,8 +15260,10 @@ class _FacultyAttendanceReportPageState
 
                     Text(
                       gpsVerified ? 'GPS verified' : 'GPS not verified',
+
                       style: TextStyle(
                         color: gpsVerified ? Colors.green : Colors.red,
+
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -16115,6 +15278,7 @@ class _FacultyAttendanceReportPageState
               Text(
                 'Distance from teacher: '
                 '${_toDouble(distanceValue).toStringAsFixed(2)} m',
+
                 style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
               ),
             ],
@@ -16125,7 +15289,9 @@ class _FacultyAttendanceReportPageState
   }
 
   // ============================================================
+
   // BUILD
+
   // ============================================================
 
   @override
@@ -16133,25 +15299,32 @@ class _FacultyAttendanceReportPageState
     return Scaffold(
       appBar: AppBar(
         title: const Text('Attendance Reports'),
+
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
+
             onPressed: _loading ? null : _loadReports,
           ),
         ],
       ),
+
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
+
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+
                   children: [
                     const Icon(
                       Icons.error_outline,
+
                       size: 60,
+
                       color: Colors.red,
                     ),
 
@@ -16159,8 +15332,10 @@ class _FacultyAttendanceReportPageState
 
                     const Text(
                       'Unable to load reports',
+
                       style: TextStyle(
                         fontSize: 20,
+
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -16173,6 +15348,7 @@ class _FacultyAttendanceReportPageState
 
                     ElevatedButton(
                       onPressed: _loadReports,
+
                       child: const Text('Retry'),
                     ),
                   ],
@@ -16183,16 +15359,20 @@ class _FacultyAttendanceReportPageState
           ? const Center(
               child: Text(
                 'No attendance reports found.',
+
                 style: TextStyle(fontSize: 18),
               ),
             )
           : RefreshIndicator(
               onRefresh: _loadReports,
+
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
+
                 children: [
                   const Text(
                     'Attendance Reports',
+
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
 
@@ -16200,6 +15380,7 @@ class _FacultyAttendanceReportPageState
 
                   Text(
                     'Each subject is grouped by subject code, with every class shown as a separate session.',
+
                     style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
                   ),
 
@@ -16214,5 +15395,7 @@ class _FacultyAttendanceReportPageState
 }
 
 // ============================================================
+
 // ADMIN DASHBOARD
+
 // ============================================================

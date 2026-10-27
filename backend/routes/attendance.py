@@ -852,10 +852,11 @@ def mark_session_attendance():
     cursor = None
 
     try:
+        
         # ---------------------------------------------------------
         # 1. AUTHENTICATION
         # ---------------------------------------------------------
-        user = getattr(request, "user", None)
+        user = getattr(request, "auth_user", None)
 
         if not user:
             return jsonify({
@@ -863,37 +864,52 @@ def mark_session_attendance():
                 "message": "Authentication required."
             }), 401
 
+        if str(user.get("role", "")).lower() != "student":
+            return jsonify({
+                "success": False,
+                "message": "Only authenticated students can mark attendance."
+            }), 403
+
+        authenticated_user_id = user.get("user_id")
+
+        if authenticated_user_id is None:
+            return jsonify({
+                "success": False,
+                "message": "Authenticated student account could not be identified."
+            }), 401
+
+
+        # --------------------------------------------------# 2. REQUEST DATA
         # ---------------------------------------------------------
-        # 2. REQUEST DATA
-        # ---------------------------------------------------------
+
+        # Student ID is optional. If absent, derive it from the
+        # authenticated user's user_id.
         student_id = request.form.get("student_id")
         session_id = request.form.get("session_id")
         qr_token = request.form.get("qr_token")
+
+        # The current Flutter QR contains the secure QR token. Older
+        # app builds do not send session_id separately. Therefore the
+        # backend resolves the session from qr_token when session_id
+        # is missing. This keeps old and new app builds compatible.
         latitude = request.form.get("latitude")
         longitude = request.form.get("longitude")
         accuracy = request.form.get("accuracy")
         is_mocked = request.form.get("is_mocked", "false")
 
-        # Face image can come through multipart/form-data.
         face_file = request.files.get("face")
-
-        if not student_id:
-            return jsonify({
-                "success": False,
-                "message": "Student ID is required."
-            }), 400
-
-        if not session_id:
-            return jsonify({
-                "success": False,
-                "message": "Session ID is required."
-            }), 400
 
         if not qr_token:
             return jsonify({
                 "success": False,
                 "message": "QR token is required."
             }), 400
+
+        # session_id is optional because the QR code itself uniquely
+        # identifies the active attendance session through qr_token.
+        # If a newer client sends session_id, it is still accepted and
+        # cross-checked against the QR token below.
+            
 
         if latitude is None or longitude is None:
             return jsonify({
@@ -929,23 +945,15 @@ def mark_session_attendance():
         # ---------------------------------------------------------
         # 4. MOCK / FAKE GPS CHECK
         # ---------------------------------------------------------
-        mocked = str(is_mocked).lower() in (
-            "true",
-            "1",
-            "yes",
-            "on"
-        )
+        mocked = str(is_mocked).lower() in ("true", "1", "yes", "on")
 
         if mocked:
             return jsonify({
                 "success": False,
                 "message": "Attendance rejected. Mock or fake GPS detected.",
-                "security": {
-                    "mock_location": True
-                }
+                "security": {"mock_location": True}
             }), 403
 
-        # ---------------------------------------------------------
         # 5. GPS ACCURACY CHECK
         # ---------------------------------------------------------
         if gps_accuracy <= 0:
@@ -974,36 +982,78 @@ def mark_session_attendance():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
+        
         # ---------------------------------------------------------
-        # 7. STUDENT
+        # 7. STUDENT — RESOLVE IDENTITY FROM AUTHENTICATED USER
         # ---------------------------------------------------------
+        submitted_student_id = request.form.get("student_id")
+        submitted_usn = request.form.get("usn")
+
         cursor.execute("""
             SELECT
                 id,
                 user_id,
-                usn,
+                student_id,
                 full_name,
                 email,
                 department,
                 semester,
-                division
+                division,
+                face_encoding,
+                face_registered
             FROM students
-            WHERE id = %s
+            WHERE user_id = %s
             LIMIT 1
-        """, (student_id,))
+        """, (authenticated_user_id,))
 
         student = cursor.fetchone()
 
         if not student:
             return jsonify({
                 "success": False,
-                "message": "Student not found."
+                "message": "Student profile not found for the authenticated account."
             }), 404
 
-        # ---------------------------------------------------------
+        # Never use a client-supplied ID to select another student.
+        if submitted_student_id not in (None, ""):
+            try:
+                supplied_id = int(submitted_student_id)
+            except (TypeError, ValueError):
+                return jsonify({
+                    "success": False,
+                    "message": "Invalid student ID."
+                }), 400
+
+            if supplied_id != int(student["id"]):
+                return jsonify({
+                    "success": False,
+                    "message": "You cannot mark attendance for another student."
+                }), 403
+
+        # Flutter currently sends the student's USN. Verify it when present.
+        if submitted_usn:
+            if (
+                str(submitted_usn).strip().upper()
+                != str(student["student_id"]).strip().upper()
+            ):
+                return jsonify({
+                    "success": False,
+                    "message": "The submitted student identity does not match your account."
+                }), 403
+
+        # Use only the database ID belonging to the authenticated user.
+        student_id = int(student["id"])
+
         # 8. SESSION
         # ---------------------------------------------------------
-        cursor.execute("""
+        # ---------------------------------------------------------
+        # Resolve the attendance session.
+        #
+        # Preferred path: use session_id when supplied.
+        # Compatibility path: resolve by qr_token when session_id is
+        # missing. The QR token is generated uniquely for each session.
+        # ---------------------------------------------------------
+        session_columns = """
             SELECT
                 id,
                 faculty_id,
@@ -1024,11 +1074,35 @@ def mark_session_attendance():
                 classroom_width,
                 created_at
             FROM attendance_sessions
-            WHERE id = %s
-            LIMIT 1
-        """, (session_id,))
+        """
+
+        if session_id:
+            try:
+                session_id = int(session_id)
+            except (TypeError, ValueError):
+                return jsonify({
+                    "success": False,
+                    "message": "Invalid session ID."
+                }), 400
+
+            cursor.execute(
+                session_columns + " WHERE id = %s LIMIT 1",
+                (session_id,)
+            )
+        else:
+            cursor.execute(
+                session_columns
+                + " WHERE qr_token = %s LIMIT 1",
+                (qr_token.strip(),)
+            )
 
         session = cursor.fetchone()
+
+        if session:
+            # Always use the database session ID from this point onward.
+            # This guarantees the attendance record is linked to the
+            # exact session represented by the QR code.
+            session_id = int(session["id"])
 
         if not session:
             return jsonify({
@@ -1051,42 +1125,45 @@ def mark_session_attendance():
         stored_qr = str(session.get("qr_token") or "").strip()
         received_qr = str(qr_token).strip()
 
-        if not stored_qr or stored_qr != received_qr:
+        if not stored_qr or not received_qr or stored_qr != received_qr:
             return jsonify({
                 "success": False,
                 "message": "Invalid or expired QR code."
             }), 403
 
+        
         # ---------------------------------------------------------
-        # 11. CLASS / SEMESTER / DIVISION VALIDATION
+        # 11A. SUBJECT REGISTRATION VALIDATION
         # ---------------------------------------------------------
-        session_semester = session.get("semester")
-        session_division = session.get("division")
+        cursor.execute("""
+            SELECT ssr.id
+            FROM student_subject_registrations ssr
+            INNER JOIN subjects sub
+                ON sub.id = ssr.subject_id
+            WHERE ssr.student_id = %s
+              AND UPPER(TRIM(sub.subject_code)) =
+                  UPPER(TRIM(%s))
+              AND CAST(sub.semester AS CHAR) =
+                  CAST(%s AS CHAR)
+            LIMIT 1
+        """, (
+            student_id,
+            session.get("subject_code"),
+            session.get("semester")
+        ))
 
-        student_semester = student.get("semester")
-        student_division = student.get("division")
+        registration = cursor.fetchone()
 
-        if (
-            session_semester is not None
-            and student_semester is not None
-            and str(session_semester).strip()
-            != str(student_semester).strip()
-        ):
+        if not registration:
             return jsonify({
                 "success": False,
-                "message": "You are not registered for this semester."
+                "message": (
+                    "You are not registered for this subject. "
+                    "Register for the subject before marking attendance."
+                ),
+                "reason": "subject_not_registered"
             }), 403
 
-        if (
-            session_division is not None
-            and student_division is not None
-            and str(session_division).strip().upper()
-            != str(student_division).strip().upper()
-        ):
-            return jsonify({
-                "success": False,
-                "message": "You are not registered for this division."
-            }), 403
 
         # ---------------------------------------------------------
         # 12. DATE / TIME VALIDATION
@@ -1177,18 +1254,14 @@ def mark_session_attendance():
 
         # ---------------------------------------------------------
         # 15. RECTANGULAR GEO-FENCE
-        #
-        # Length = north/south dimension
-        # Width  = east/west dimension
-        #
-        # Teacher is the centre of the classroom.
         # ---------------------------------------------------------
+
         north_south_meters = (
             student_lat - teacher_lat
         ) * 111320.0
 
-        longitude_scale = 111320.0 * cos(
-            radians(teacher_lat)
+        longitude_scale = (
+            111320.0 * cos(radians(teacher_lat))
         )
 
         east_west_meters = (
@@ -1198,12 +1271,31 @@ def mark_session_attendance():
         half_length = classroom_length / 2.0
         half_width = classroom_width / 2.0
 
+        # Small capped tolerance for indoor GPS variation.
+        # Classroom dimensions themselves remain unchanged.
+        gps_tolerance = 10.0
+
+        if gps_accuracy is not None:
+            gps_tolerance = min(
+                max(gps_accuracy, 0.0),
+                10.0
+            )
+
+        effective_half_length = (
+            half_length + gps_tolerance
+        )
+        effective_half_width = (
+            half_width + gps_tolerance
+        )
+
         inside_length = (
-            abs(north_south_meters) <= half_length
+            abs(north_south_meters)
+            <= effective_half_length
         )
 
         inside_width = (
-            abs(east_west_meters) <= half_width
+            abs(east_west_meters)
+            <= effective_half_width
         )
 
         inside_classroom = (
@@ -1213,38 +1305,32 @@ def mark_session_attendance():
         # ---------------------------------------------------------
         # 16. STRAIGHT-LINE DISTANCE FROM TEACHER
         # ---------------------------------------------------------
+
         distance_meters = sqrt(
             (north_south_meters ** 2)
-            +
-            (east_west_meters ** 2)
+            + (east_west_meters ** 2)
         )
 
         location_payload = {
             "latitude": student_lat,
             "longitude": student_lon,
             "accuracy": gps_accuracy,
-
             "teacher_latitude": teacher_lat,
             "teacher_longitude": teacher_lon,
-
             "distance_meters": round(distance_meters, 2),
-
             "north_south_distance": round(
-                north_south_meters,
-                2
+                north_south_meters, 2
             ),
-
             "east_west_distance": round(
-                east_west_meters,
-                2
+                east_west_meters, 2
             ),
-
             "classroom_length": classroom_length,
             "classroom_width": classroom_width,
-
             "half_length": half_length,
             "half_width": half_width,
-
+            "gps_tolerance": gps_tolerance,
+            "effective_half_length": effective_half_length,
+            "effective_half_width": effective_half_width,
             "inside_length": inside_length,
             "inside_width": inside_width,
             "inside": inside_classroom
@@ -1254,45 +1340,42 @@ def mark_session_attendance():
             "\n========== ANTIPROXY LOCATION =========="
         )
         print(
-            f"Teacher Centre : "
-            f"{teacher_lat}, {teacher_lon}"
+            f"Teacher Centre : {teacher_lat}, {teacher_lon}"
         )
         print(
-            f"Student GPS    : "
-            f"{student_lat}, {student_lon}"
+            f"Student GPS    : {student_lat}, {student_lon}"
         )
         print(
-            f"Accuracy       : "
-            f"{gps_accuracy:.2f} m"
+            f"Accuracy       : {gps_accuracy:.2f} m"
         )
         print(
-            f"NS displacement: "
-            f"{north_south_meters:.2f} m"
+            f"NS displacement: {north_south_meters:.2f} m"
         )
         print(
-            f"EW displacement: "
-            f"{east_west_meters:.2f} m"
+            f"EW displacement: {east_west_meters:.2f} m"
         )
         print(
-            f"Distance       : "
-            f"{distance_meters:.2f} m"
+            f"Distance       : {distance_meters:.2f} m"
         )
         print(
-            f"Classroom      : "
-            f"{classroom_length:.2f} x "
+            f"Classroom      : {classroom_length:.2f} x "
             f"{classroom_width:.2f} m"
         )
         print(
-            f"Inside Length   : "
-            f"{inside_length}"
+            f"GPS tolerance  : {gps_tolerance:.2f} m"
         )
         print(
-            f"Inside Width    : "
-            f"{inside_width}"
+            f"Effective area : {effective_half_length:.2f} x "
+            f"{effective_half_width:.2f} m from centre"
         )
         print(
-            f"Inside Classroom: "
-            f"{inside_classroom}"
+            f"Inside Length   : {inside_length}"
+        )
+        print(
+            f"Inside Width    : {inside_width}"
+        )
+        print(
+            f"Inside Classroom: {inside_classroom}"
         )
         print(
             "==========================================\n"
@@ -1320,32 +1403,26 @@ def mark_session_attendance():
 
         if face_file:
             try:
-                face_result = verify_face(
-                    student_id,
-                    face_file
+                if not student.get("face_registered"):
+                    return jsonify({
+                        "success": False,
+                        "message": "Face is not registered.",
+                        "location": location_payload
+                    }), 400
+
+                image_bytes = face_file.read()
+
+                if not image_bytes:
+                    return jsonify({
+                        "success": False,
+                        "message": "Empty face image.",
+                        "location": location_payload
+                    }), 400
+
+                face_verified, face_message, face_similarity = verify_face(
+                    image_bytes,
+                    student.get("face_encoding")
                 )
-
-                if isinstance(face_result, dict):
-                    face_verified = bool(
-                        face_result.get("verified")
-                        or face_result.get("success")
-                    )
-
-                    similarity_value = (
-                        face_result.get("similarity")
-                        or face_result.get("confidence")
-                    )
-
-                    if similarity_value is not None:
-                        try:
-                            face_similarity = float(
-                                similarity_value
-                            )
-                        except (TypeError, ValueError):
-                            face_similarity = None
-
-                else:
-                    face_verified = bool(face_result)
 
             except Exception as face_error:
                 print(
@@ -1377,6 +1454,41 @@ def mark_session_attendance():
                 "location": location_payload
             }), 403
 
+        
+        # ---------------------------------------------------------
+        # 19. SERVER-SIDE ANTI-SPOOF VERIFICATION
+        # ---------------------------------------------------------
+        try:
+            from antispoof import verify_live_face
+
+            is_live, antispoof_message, real_probability = (
+                verify_live_face(image_bytes)
+            )
+
+        except Exception as antispoof_error:
+            print(f"[ANTISPOOF] Verification error: {antispoof_error}")
+            return jsonify({
+                "success": False,
+                "message": "Anti-spoof verification is temporarily unavailable.",
+                "face_verified": True,
+                "antispoof_verified": False
+            }), 503
+
+        if not is_live:
+            return jsonify({
+                "success": False,
+                "message": antispoof_message,
+                "face_verified": True,
+                "antispoof_verified": False,
+                "real_face_probability": real_probability
+            }), 403
+
+        print(
+            f"[ANTISPOOF] Passed. "
+            f"Real-face probability: {real_probability:.4f}"
+        )
+
+
         # ---------------------------------------------------------
         # 19. DUPLICATE ATTENDANCE CHECK
         # ---------------------------------------------------------
@@ -1384,7 +1496,8 @@ def mark_session_attendance():
             SELECT
                 id,
                 status,
-                marked_at
+                attendance_date,
+                attendance_time
             FROM attendance
             WHERE session_id = %s
               AND student_id = %s
@@ -1411,24 +1524,36 @@ def mark_session_attendance():
         # 20. INSERT ATTENDANCE
         # ---------------------------------------------------------
         cursor.execute("""
-            INSERT INTO attendance (
-                session_id,
-                student_id,
-                status,
-                marked_at
-            )
-            VALUES (
-                %s,
-                %s,
-                %s,
-                %s
-            )
-        """, (
-            session_id,
-            student_id,
-            "present",
-            now
-        ))
+    INSERT INTO attendance (
+        session_id,
+        student_id,
+        attendance_date,
+        attendance_time,
+        status,
+        latitude,
+        longitude,
+        face_verified
+    )
+    VALUES (
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        %s,
+        %s
+    )
+""", (
+    session_id,
+    student_id,
+    now.date(),
+    now.time(),
+    "present",
+    student_lat,
+    student_lon,
+    1
+))
 
         attendance_id = cursor.lastrowid
 
@@ -1454,10 +1579,36 @@ def mark_session_attendance():
             "student_id": student_id,
             "session_id": session_id,
 
+            # Nested objects are included for compatibility with the
+            # Flutter attendance-success screen.
+            "student": {
+                "id": student_id,
+                "name": student.get("full_name"),
+                "full_name": student.get("full_name"),
+                "student_id": student.get("student_id"),
+                "email": student.get("email"),
+            },
+            "face": {
+                "verified": True,
+                "similarity": face_similarity,
+            },
+            "session": {
+                "id": session_id,
+                "subject_name": session.get("subject_name"),
+                "subject_code": session.get("subject_code"),
+                "class_name": session.get("class_name"),
+                "semester": session.get("semester"),
+                "division": session.get("division"),
+            },
             "face_verified": True,
             "similarity": face_similarity,
 
-            "location": location_payload
+            "location": {
+                **location_payload,
+                # Current and previous Flutter builds used different
+                # keys for the displayed distance. Return both.
+                "distance": round(distance_meters, 2),
+            }
         }), 200
 
     except IntegrityError as e:
@@ -2614,7 +2765,6 @@ def student_attendance_report(usn):
 # IMPORTANT:
 # Students are NEVER merged between individual sessions.
 # ============================================================
-
 @attendance_bp.route("/faculty/attendance-report/<int:faculty_id>", methods=["GET"])
 def faculty_attendance_report(faculty_id):
 
@@ -2632,41 +2782,16 @@ def faculty_attendance_report(faculty_id):
         # QUERY PARAMETERS
         # ====================================================
 
-        faculty_user_id = request.args.get(
-            "faculty_user_id"
-        )
+        faculty_user_id = request.args.get("faculty_user_id")
+        session_id_filter = request.args.get("session_id")
+        subject_code_filter = request.args.get("subject_code")
+        attendance_date_filter = request.args.get("attendance_date")
 
-        session_id_filter = request.args.get(
-            "session_id"
-        )
-
-        subject_code_filter = request.args.get(
-            "subject_code"
-        )
-
-        attendance_date_filter = request.args.get(
-            "attendance_date"
-        )
-
-        print(
-            "Faculty User ID:",
-            faculty_user_id
-        )
-
-        print(
-            "Session ID:",
-            session_id_filter
-        )
-
-        print(
-            "Subject Code:",
-            subject_code_filter
-        )
-
-        print(
-            "Attendance Date:",
-            attendance_date_filter
-        )
+        print("Faculty ID:", faculty_id)
+        print("Faculty User ID:", faculty_user_id)
+        print("Session ID:", session_id_filter)
+        print("Subject Code:", subject_code_filter)
+        print("Attendance Date:", attendance_date_filter)
 
         # ====================================================
         # DATABASE
@@ -2674,9 +2799,7 @@ def faculty_attendance_report(faculty_id):
 
         db = get_db_connection()
 
-        cursor = db.cursor(
-            dictionary=True
-        )
+        cursor = db.cursor(dictionary=True)
 
         # ====================================================
         # GET ALL SESSIONS BELONGING TO FACULTY
@@ -2713,7 +2836,11 @@ def faculty_attendance_report(faculty_id):
 
                 s.status,
 
-                s.created_at
+                s.created_at,
+
+                s.classroom_length,
+
+                s.classroom_width
 
             FROM attendance_sessions s
 
@@ -2739,6 +2866,16 @@ def faculty_attendance_report(faculty_id):
                 faculty_user_id
             )
 
+        else:
+
+            session_query += """
+                AND f.user_id = %s
+            """
+
+            session_params.append(
+                faculty_id
+            )
+
         # ====================================================
         # SESSION FILTER
         # ====================================================
@@ -2760,15 +2897,9 @@ def faculty_attendance_report(faculty_id):
         if subject_code_filter:
 
             session_query += """
-                AND UPPER(
-                    TRIM(
-                        s.subject_code
-                    )
-                )
-                =
-                UPPER(
-                    TRIM(%s)
-                )
+                AND UPPER(TRIM(s.subject_code))
+                    =
+                    UPPER(TRIM(%s))
             """
 
             session_params.append(
@@ -2790,17 +2921,7 @@ def faculty_attendance_report(faculty_id):
             )
 
         # ====================================================
-        # IMPORTANT:
-        #
-        # Sessions are ordered OLD → NEW.
-        #
-        # This guarantees:
-        #
-        # Session 1
-        # Session 2
-        # Session 3
-        #
-        # in chronological order.
+        # ORDER
         # ====================================================
 
         session_query += """
@@ -2829,23 +2950,15 @@ def faculty_attendance_report(faculty_id):
         if not sessions:
 
             return jsonify({
-
-                "success":
-                    True,
-
-                "reports":
-                    [],
-
-                "message":
-                    "No attendance sessions found."
-
+                "success": True,
+                "reports": [],
+                "message": "No attendance sessions found."
             }), 200
 
         # ====================================================
         # GROUP SESSIONS
         #
-        # SAME:
-        #
+        # EXACT:
         # subject_code
         # semester
         # division
@@ -2858,24 +2971,15 @@ def faculty_attendance_report(faculty_id):
         for session in sessions:
 
             subject_code = str(
-                session.get(
-                    "subject_code"
-                )
-                or ""
+                session.get("subject_code") or ""
             ).strip().upper()
 
             semester = str(
-                session.get(
-                    "semester"
-                )
-                or ""
+                session.get("semester") or ""
             ).strip()
 
             division = str(
-                session.get(
-                    "division"
-                )
-                or ""
+                session.get("division") or ""
             ).strip().upper()
 
             group_key = (
@@ -2884,17 +2988,10 @@ def faculty_attendance_report(faculty_id):
                 division
             )
 
-            if group_key not in grouped_sessions:
-
-                grouped_sessions[
-                    group_key
-                ] = []
-
-            grouped_sessions[
-                group_key
-            ].append(
-                session
-            )
+            grouped_sessions.setdefault(
+                group_key,
+                []
+            ).append(session)
 
         print(
             "SUBJECT GROUPS:",
@@ -2907,9 +3004,7 @@ def faculty_attendance_report(faculty_id):
         # PROCESS EACH SUBJECT
         # ====================================================
 
-        for group_key, subject_sessions in (
-            grouped_sessions.items()
-        ):
+        for group_key, subject_sessions in grouped_sessions.items():
 
             (
                 subject_code,
@@ -2918,9 +3013,7 @@ def faculty_attendance_report(faculty_id):
             ) = group_key
 
             # =================================================
-            # EXTRA SAFETY:
-            #
-            # Sort sessions again inside the group.
+            # SORT SESSIONS
             # =================================================
 
             subject_sessions = sorted(
@@ -2929,20 +3022,17 @@ def faculty_attendance_report(faculty_id):
                     str(
                         session.get(
                             "attendance_date"
-                        )
-                        or ""
+                        ) or ""
                     ),
                     str(
                         session.get(
                             "start_time"
-                        )
-                        or ""
+                        ) or ""
                     ),
                     int(
                         session.get(
                             "session_id"
-                        )
-                        or 0
+                        ) or 0
                     )
                 )
             )
@@ -2951,16 +3041,7 @@ def faculty_attendance_report(faculty_id):
                 subject_sessions
             )
 
-            # =================================================
-            # LATEST SESSION
-            #
-            # Kept for backward compatibility with existing
-            # Flutter code.
-            # =================================================
-
-            latest_session = (
-                subject_sessions[-1]
-            )
+            latest_session = subject_sessions[-1]
 
             print()
             print("--------------------------------------")
@@ -2985,20 +3066,26 @@ def faculty_attendance_report(faculty_id):
 
             # =================================================
             # GET CLASS ROSTER
+            #
+            # EXACT SUBJECT CODE MATCH
+            #
+            # Example:
+            # 22UCS113C -> 22UCS113C
+            #
+            # We DO NOT remove C or alter the code.
             # =================================================
 
             cursor.execute(
                 """
                 SELECT
 
-                    cr.student_id
-                        AS roster_student_id,
+                    cr.student_id AS roster_student_id,
 
-                    st.student_id
-                        AS usn,
+                    st.id AS student_db_id,
 
-                    st.full_name
-                        AS student_name
+                    st.student_id AS usn,
+
+                    st.full_name AS student_name
 
                 FROM class_roster cr
 
@@ -3007,37 +3094,21 @@ def faculty_attendance_report(faculty_id):
 
                 WHERE
 
-                    UPPER(
-                        TRIM(
-                            cr.subject_code
-                        )
-                    )
-                    =
-                    UPPER(
-                        TRIM(%s)
-                    )
+                    UPPER(TRIM(cr.subject_code))
+                        =
+                        UPPER(TRIM(%s))
 
                     AND TRIM(
-                        CAST(
-                            cr.semester AS CHAR
-                        )
+                        CAST(cr.semester AS CHAR)
                     )
-                    =
-                    TRIM(
-                        CAST(
-                            %s AS CHAR
-                        )
-                    )
-
-                    AND UPPER(
+                        =
                         TRIM(
-                            cr.division
+                            CAST(%s AS CHAR)
                         )
-                    )
-                    =
-                    UPPER(
-                        TRIM(%s)
-                    )
+
+                    AND UPPER(TRIM(cr.division))
+                        =
+                        UPPER(TRIM(%s))
 
                 ORDER BY
                     st.student_id ASC
@@ -3049,14 +3120,71 @@ def faculty_attendance_report(faculty_id):
                 )
             )
 
-            roster_students = (
-                cursor.fetchall()
-            )
+            roster_students = cursor.fetchall()
 
             print(
                 "ROSTER STUDENTS:",
                 len(roster_students)
             )
+
+            # =================================================
+            # IMPORTANT FALLBACK
+            #
+            # If roster is empty, check whether attendance
+            # records actually exist for these sessions.
+            #
+            # This makes the problem visible instead of
+            # silently producing a meaningless zero report.
+            # =================================================
+
+            if not roster_students:
+
+                session_ids = [
+                    int(
+                        s["session_id"]
+                    )
+                    for s in subject_sessions
+                ]
+
+                placeholders = ",".join(
+                    ["%s"] * len(session_ids)
+                )
+
+                cursor.execute(
+                    f"""
+                    SELECT
+                        COUNT(*) AS attendance_count
+                    FROM attendance
+                    WHERE session_id IN ({placeholders})
+                    """,
+                    tuple(session_ids)
+                )
+
+                attendance_count_result = (
+                    cursor.fetchone()
+                )
+
+                attendance_count = int(
+                    attendance_count_result[
+                        "attendance_count"
+                    ] or 0
+                )
+
+                print(
+                    "ATTENDANCE RECORDS FOR SUBJECT:",
+                    attendance_count
+                )
+
+                if attendance_count > 0:
+
+                    print(
+                        "WARNING:"
+                        " Attendance records exist,"
+                        " but class_roster is empty for"
+                        f" {subject_code} /"
+                        f" {semester} /"
+                        f" {division}"
+                    )
 
             roster_count = len(
                 roster_students
@@ -3064,21 +3192,11 @@ def faculty_attendance_report(faculty_id):
 
             # =================================================
             # CUMULATIVE STUDENT DATA
-            #
-            # This is retained only for compatibility.
-            #
-            # Flutter's session UI will use:
-            #
-            # session["students"]
-            #
-            # instead.
             # =================================================
 
             student_data = {}
 
-            for roster_student in (
-                roster_students
-            ):
+            for roster_student in roster_students:
 
                 student_id = (
                     roster_student[
@@ -3115,27 +3233,16 @@ def faculty_attendance_report(faculty_id):
 
             # =================================================
             # SESSION DETAILS
-            #
-            # IMPORTANT:
-            #
-            # Every object in this list gets its own
-            # "students" array.
             # =================================================
 
             session_details = []
 
-            # =================================================
-            # OVERALL TOTALS
-            # =================================================
-
             total_present = 0
-
             total_late = 0
-
             total_absent = 0
 
             # =================================================
-            # PROCESS EVERY SESSION SEPARATELY
+            # PROCESS EVERY SESSION
             # =================================================
 
             for session_index, current_session in enumerate(
@@ -3161,7 +3268,7 @@ def faculty_attendance_report(faculty_id):
                 )
 
                 # =============================================
-                # GET ATTENDANCE FOR THIS SESSION ONLY
+                # GET ATTENDANCE RECORDS
                 # =============================================
 
                 cursor.execute(
@@ -3186,8 +3293,7 @@ def faculty_attendance_report(faculty_id):
 
                     FROM attendance a
 
-                    WHERE
-                        a.session_id = %s
+                    WHERE a.session_id = %s
 
                     ORDER BY
                         a.attendance_time ASC,
@@ -3202,17 +3308,18 @@ def faculty_attendance_report(faculty_id):
                     cursor.fetchall()
                 )
 
+                print(
+                    "Attendance records:",
+                    len(attendance_records)
+                )
+
                 # =============================================
-                # CREATE QUICK LOOKUP
-                #
-                # student_id -> attendance record
+                # ATTENDANCE LOOKUP
                 # =============================================
 
                 attendance_by_student = {}
 
-                for attendance in (
-                    attendance_records
-                ):
+                for attendance in attendance_records:
 
                     student_id = (
                         attendance[
@@ -3220,41 +3327,25 @@ def faculty_attendance_report(faculty_id):
                         ]
                     )
 
-                    # Ignore students who are not in
-                    # this class roster.
-
-                    if student_id not in student_data:
-
-                        continue
-
                     attendance_by_student[
                         student_id
                     ] = attendance
 
                 # =============================================
-                # SESSION STUDENT LIST
-                #
-                # THIS IS THE IMPORTANT CHANGE.
-                #
-                # Every session receives a completely
-                # independent student list.
+                # SESSION STUDENTS
                 # =============================================
 
                 session_students = []
 
                 session_present = 0
-
                 session_late = 0
-
                 session_absent = 0
 
                 # =============================================
-                # PROCESS EVERY ROSTER STUDENT
+                # PROCESS ROSTER
                 # =============================================
 
-                for roster_student in (
-                    roster_students
-                ):
+                for roster_student in roster_students:
 
                     student_id = (
                         roster_student[
@@ -3281,11 +3372,7 @@ def faculty_attendance_report(faculty_id):
                     )
 
                     # =========================================
-                    # DEFAULT = ABSENT
-                    #
-                    # If there is no attendance record for
-                    # this student in THIS SESSION, the student
-                    # is absent for THIS SESSION.
+                    # ABSENT
                     # =========================================
 
                     if attendance is None:
@@ -3346,22 +3433,17 @@ def faculty_attendance_report(faculty_id):
                                 []
                         }
 
-                    else:
+                    # =========================================
+                    # PRESENT / LATE
+                    # =========================================
 
-                        # =====================================
-                        # GET STATUS
-                        # =====================================
+                    else:
 
                         raw_status = str(
                             attendance.get(
                                 "status"
-                            )
-                            or "present"
+                            ) or "present"
                         ).strip().lower()
-
-                        # =====================================
-                        # NORMALIZE STATUS
-                        # =====================================
 
                         if raw_status == "late":
 
@@ -3376,11 +3458,10 @@ def faculty_attendance_report(faculty_id):
                             session_present += 1
 
                         # =====================================
-                        # GPS DETAILS
+                        # GPS
                         # =====================================
 
                         gps_verified = False
-
                         distance = None
 
                         student_latitude = (
@@ -3419,9 +3500,7 @@ def faculty_attendance_report(faculty_id):
                                     atan2
                                 )
 
-                                earth_radius = (
-                                    6371000.0
-                                )
+                                earth_radius = 6371000.0
 
                                 session_latitude = float(
                                     current_session[
@@ -3461,13 +3540,8 @@ def faculty_attendance_report(faculty_id):
                                     )
                                 )
 
-                                dlat = (
-                                    lat2 - lat1
-                                )
-
-                                dlon = (
-                                    lon2 - lon1
-                                )
+                                dlat = lat2 - lat1
+                                dlon = lon2 - lon1
 
                                 a = (
                                     sin(dlat / 2) ** 2
@@ -3505,10 +3579,6 @@ def faculty_attendance_report(faculty_id):
                                     gps_error
                                 )
 
-                        # =====================================
-                        # ATTENDANCE DATE
-                        # =====================================
-
                         attendance_date = (
                             str(
                                 attendance[
@@ -3521,10 +3591,6 @@ def faculty_attendance_report(faculty_id):
                             else None
                         )
 
-                        # =====================================
-                        # ATTENDANCE TIME
-                        # =====================================
-
                         attendance_time = (
                             str(
                                 attendance[
@@ -3536,10 +3602,6 @@ def faculty_attendance_report(faculty_id):
                             ) is not None
                             else None
                         )
-
-                        # =====================================
-                        # ONE ATTENDANCE RECORD
-                        # =====================================
 
                         one_attendance_record = {
 
@@ -3580,10 +3642,6 @@ def faculty_attendance_report(faculty_id):
                                     else None
                                 )
                         }
-
-                        # =====================================
-                        # SESSION STUDENT RECORD
-                        # =====================================
 
                         student_record = {
 
@@ -3653,7 +3711,7 @@ def faculty_attendance_report(faculty_id):
                         }
 
                     # =========================================
-                    # ADD STUDENT TO THIS SESSION ONLY
+                    # ADD TO SESSION
                     # =========================================
 
                     session_students.append(
@@ -3661,9 +3719,7 @@ def faculty_attendance_report(faculty_id):
                     )
 
                     # =========================================
-                    # UPDATE CUMULATIVE DATA
-                    #
-                    # This does NOT affect session_students.
+                    # CUMULATIVE DATA
                     # =========================================
 
                     if attendance is None:
@@ -3679,8 +3735,7 @@ def faculty_attendance_report(faculty_id):
                         raw_status = str(
                             attendance.get(
                                 "status"
-                            )
-                            or "present"
+                            ) or "present"
                         ).strip().lower()
 
                         if raw_status == "late":
@@ -3698,8 +3753,6 @@ def faculty_attendance_report(faculty_id):
                             ][
                                 "present_sessions"
                             ] += 1
-
-                        # Add cumulative attendance record
 
                         student_data[
                             student_id
@@ -3785,26 +3838,27 @@ def faculty_attendance_report(faculty_id):
                     session_absent
                 )
 
-                # Safety: total must equal roster size.
-
-                if session_total < roster_count:
-
-                    session_absent += (
-                        roster_count
-                        -
-                        session_total
-                    )
-
-                elif session_total > roster_count:
+                # Safety check
+                if session_total != roster_count:
 
                     print(
-                        "WARNING: Session counts exceed roster."
+                        "WARNING:"
+                        " Session count does not match roster."
+                    )
+
+                    print(
+                        "Roster:",
+                        roster_count,
+                        "| Present:",
+                        session_present,
+                        "| Late:",
+                        session_late,
+                        "| Absent:",
+                        session_absent
                     )
 
                 # =============================================
-                # SESSION ATTENDANCE PERCENTAGE
-                #
-                # Present + Late are counted as attended.
+                # SESSION PERCENTAGE
                 # =============================================
 
                 session_percentage = 0.0
@@ -3821,8 +3875,7 @@ def faculty_attendance_report(faculty_id):
                             /
                             roster_count
                         )
-                        *
-                        100,
+                        * 100,
                         2
                     )
 
@@ -3844,80 +3897,185 @@ def faculty_attendance_report(faculty_id):
 
                 # =============================================
                 # SESSION OBJECT
-                #
-                # THIS NOW CONTAINS:
-                #
-                # "students": session_students
-                #
-                # This is what Flutter will use.
                 # =============================================
 
                 session_details.append({
-    "session_id": current_session_id,
-    "session_number": session_index,
 
-    # ====================================================
-    # SESSION DATE & TIME
-    # ====================================================
+                    "session_id":
+                        current_session_id,
 
-    "attendance_date": (
-        current_session["attendance_date"].isoformat()
-        if current_session["attendance_date"]
-        else None
-    ),
+                    "session_number":
+                        session_index,
 
-    "start_time": (
-        str(current_session["start_time"])
-        if current_session["start_time"]
-        else None
-    ),
+                    "attendance_date":
+                        (
+                            current_session[
+                                "attendance_date"
+                            ].isoformat()
+                            if current_session.get(
+                                "attendance_date"
+                            )
+                            and hasattr(
+                                current_session[
+                                    "attendance_date"
+                                ],
+                                "isoformat"
+                            )
+                            else (
+                                str(
+                                    current_session.get(
+                                        "attendance_date"
+                                    )
+                                )
+                                if current_session.get(
+                                    "attendance_date"
+                                ) is not None
+                                else None
+                            )
+                        ),
 
-    "end_time": (
-        str(current_session["end_time"])
-        if current_session["end_time"]
-        else None
-    ),
+                    "start_time":
+                        (
+                            str(
+                                current_session[
+                                    "start_time"
+                                ]
+                            )
+                            if current_session.get(
+                                "start_time"
+                            ) is not None
+                            else None
+                        ),
 
-    # ====================================================
-    # CLASS INFORMATION
-    # ====================================================
+                    "end_time":
+                        (
+                            str(
+                                current_session[
+                                    "end_time"
+                                ]
+                            )
+                            if current_session.get(
+                                "end_time"
+                            ) is not None
+                            else None
+                        ),
 
-    "subject_code": current_session["subject_code"],
-    "subject_name": current_session["subject_name"],
-    "class_name": current_session["class_name"],
-    "semester": current_session["semester"],
-    "division": current_session["division"],
+                    # =========================================
+                    # SUBJECT
+                    # =========================================
 
-    # ====================================================
-    # GEOFENCE INFORMATION
-    # ====================================================
+                    "subject_code":
+                        str(
+                            current_session.get(
+                                "subject_code"
+                            ) or ""
+                        ).strip().upper(),
 
-    "teacher_latitude": current_session["allowed_latitude"],
-    "teacher_longitude": current_session["allowed_longitude"],
-    "geofence_radius": current_session["allowed_radius"],
+                    "subject_name":
+                        current_session.get(
+                            "subject_name"
+                        ),
 
-    # ====================================================
-    # SESSION STATUS
-    # ====================================================
+                    "class_name":
+                        current_session.get(
+                            "class_name"
+                        ),
 
-    "status": current_session["status"],
+                    "semester":
+                        current_session.get(
+                            "semester"
+                        ),
 
-    # ====================================================
-    # ATTENDANCE SUMMARY
-    # ====================================================
+                    "division":
+                        current_session.get(
+                            "division"
+                        ),
 
-    "present": session_present,
-    "late": session_late,
-    "absent": session_absent,
-    "total_students": roster_count,
-    "attendance_percentage": session_percentage,
+                    # =========================================
+                    # LOCATION
+                    # =========================================
 
-    # ====================================================
-    # THIS SESSION'S STUDENTS ONLY
-    # ====================================================
+                    "teacher_latitude":
+                        current_session.get(
+                            "allowed_latitude"
+                        ),
 
-    "students": session_students
-})
+                    "teacher_longitude":
+                        current_session.get(
+                            "allowed_longitude"
+                        ),
+
+                    "geofence_radius":
+                        current_session.get(
+                            "allowed_radius"
+                        ),
+
+                    # =========================================
+                    # CLASSROOM DIMENSIONS
+                    # =========================================
+
+                    "classroom_length":
+                        (
+                            float(
+                                current_session[
+                                    "classroom_length"
+                                ]
+                            )
+                            if current_session.get(
+                                "classroom_length"
+                            ) is not None
+                            else 0.0
+                        ),
+
+                    "classroom_width":
+                        (
+                            float(
+                                current_session[
+                                    "classroom_width"
+                                ]
+                            )
+                            if current_session.get(
+                                "classroom_width"
+                            ) is not None
+                            else 0.0
+                        ),
+
+                    # =========================================
+                    # STATUS
+                    # =========================================
+
+                    "status":
+                        current_session.get(
+                            "status"
+                        ),
+
+                    # =========================================
+                    # SUMMARY
+                    # =========================================
+
+                    "present":
+                        session_present,
+
+                    "late":
+                        session_late,
+
+                    "absent":
+                        session_absent,
+
+                    "total_students":
+                        roster_count,
+
+                    "attendance_percentage":
+                        session_percentage,
+
+                    # =========================================
+                    # STUDENTS
+                    # =========================================
+
+                    "students":
+                        session_students
+                })
+
                 print(
                     "Session",
                     session_index,
@@ -3930,39 +4088,27 @@ def faculty_attendance_report(faculty_id):
                     "| Absent:",
                     session_absent,
                     "| Students:",
-                    len(
-                        session_students
-                    )
+                    len(session_students)
                 )
 
             # =================================================
             # BUILD CUMULATIVE STUDENT REPORT
-            #
-            # Kept for backward compatibility.
             # =================================================
 
             students = []
 
-            for student_id, data in (
-                student_data.items()
-            ):
+            for student_id, data in student_data.items():
 
                 present_sessions = (
-                    data[
-                        "present_sessions"
-                    ]
+                    data["present_sessions"]
                 )
 
                 late_sessions = (
-                    data[
-                        "late_sessions"
-                    ]
+                    data["late_sessions"]
                 )
 
                 absent_sessions = (
-                    data[
-                        "absent_sessions"
-                    ]
+                    data["absent_sessions"]
                 )
 
                 attended_sessions = (
@@ -3981,8 +4127,7 @@ def faculty_attendance_report(faculty_id):
                             /
                             session_count
                         )
-                        *
-                        100,
+                        * 100,
                         2
                     )
 
@@ -4005,9 +4150,8 @@ def faculty_attendance_report(faculty_id):
                     raw_latest_status = str(
                         latest_attendance.get(
                             "status"
-                        )
-                        or "present"
-                    ).lower()
+                        ) or "present"
+                    ).strip().lower()
 
                     if raw_latest_status == "late":
 
@@ -4018,9 +4162,7 @@ def faculty_attendance_report(faculty_id):
                         latest_status = "Present"
 
                 face_verified = False
-
                 gps_verified = False
-
                 distance = None
 
                 if latest_attendance:
@@ -4046,6 +4188,15 @@ def faculty_attendance_report(faculty_id):
                     if (
                         student_latitude is not None
                         and student_longitude is not None
+                        and latest_session.get(
+                            "allowed_latitude"
+                        ) is not None
+                        and latest_session.get(
+                            "allowed_longitude"
+                        ) is not None
+                        and latest_session.get(
+                            "allowed_radius"
+                        ) is not None
                     ):
 
                         try:
@@ -4058,9 +4209,7 @@ def faculty_attendance_report(faculty_id):
                                 atan2
                             )
 
-                            earth_radius = (
-                                6371000.0
-                            )
+                            earth_radius = 6371000.0
 
                             session_latitude = float(
                                 latest_session[
@@ -4100,13 +4249,8 @@ def faculty_attendance_report(faculty_id):
                                 )
                             )
 
-                            dlat = (
-                                lat2 - lat1
-                            )
-
-                            dlon = (
-                                lon2 - lon1
-                            )
+                            dlat = lat2 - lat1
+                            dlon = lon2 - lon1
 
                             a = (
                                 sin(dlat / 2) ** 2
@@ -4147,14 +4291,10 @@ def faculty_attendance_report(faculty_id):
                 students.append({
 
                     "usn":
-                        data[
-                            "usn"
-                        ],
+                        data["usn"],
 
                     "student_name":
-                        data[
-                            "student_name"
-                        ],
+                        data["student_name"],
 
                     "status":
                         latest_status,
@@ -4239,7 +4379,7 @@ def faculty_attendance_report(faculty_id):
                 })
 
             # =================================================
-            # OVERALL TOTALS
+            # OVERALL SUMMARY
             # =================================================
 
             total_students = len(
@@ -4266,20 +4406,15 @@ def faculty_attendance_report(faculty_id):
                         /
                         total_possible
                     )
-                    *
-                    100,
+                    * 100,
                     2
                 )
 
             # =================================================
-            # FINAL SUBJECT REPORT
+            # FINAL REPORT
             # =================================================
 
             reports.append({
-
-                # =============================================
-                # SUBJECT INFORMATION
-                # =============================================
 
                 "session": {
 
@@ -4296,9 +4431,11 @@ def faculty_attendance_report(faculty_id):
                         ),
 
                     "subject_code":
-                        latest_session.get(
-                            "subject_code"
-                        ),
+                        str(
+                            latest_session.get(
+                                "subject_code"
+                            ) or ""
+                        ).strip().upper(),
 
                     "class_name":
                         latest_session.get(
@@ -4393,6 +4530,32 @@ def faculty_attendance_report(faculty_id):
                             else None
                         ),
 
+                    "classroom_length":
+                        (
+                            float(
+                                latest_session[
+                                    "classroom_length"
+                                ]
+                            )
+                            if latest_session.get(
+                                "classroom_length"
+                            ) is not None
+                            else 0.0
+                        ),
+
+                    "classroom_width":
+                        (
+                            float(
+                                latest_session[
+                                    "classroom_width"
+                                ]
+                            )
+                            if latest_session.get(
+                                "classroom_width"
+                            ) is not None
+                            else 0.0
+                        ),
+
                     "status":
                         latest_session.get(
                             "status"
@@ -4412,25 +4575,11 @@ def faculty_attendance_report(faculty_id):
                         )
                 },
 
-                # =============================================
-                # NUMBER OF SESSIONS
-                # =============================================
-
                 "session_count":
                     session_count,
 
-                # =============================================
-                # EACH SESSION SEPARATELY
-                #
-                # Every item contains its own students[].
-                # =============================================
-
                 "sessions":
                     session_details,
-
-                # =============================================
-                # CUMULATIVE SUMMARY
-                # =============================================
 
                 "summary": {
 
@@ -4455,12 +4604,6 @@ def faculty_attendance_report(faculty_id):
                     "attendance_percentage":
                         overall_percentage
                 },
-
-                # =============================================
-                # CUMULATIVE STUDENTS
-                #
-                # Kept for compatibility only.
-                # =============================================
 
                 "students":
                     students
@@ -4490,94 +4633,44 @@ def faculty_attendance_report(faculty_id):
 
             print(
                 "REPORT:",
-                report[
-                    "session"
-                ][
-                    "subject_code"
-                ],
-
+                report["session"]["subject_code"],
                 "| Sessions:",
-                report[
-                    "session_count"
-                ],
-
+                report["session_count"],
                 "| Students:",
-                report[
-                    "summary"
-                ][
-                    "total_students"
-                ],
-
+                report["summary"]["total_students"],
                 "| Present:",
-                report[
-                    "summary"
-                ][
-                    "present"
-                ],
-
+                report["summary"]["present"],
                 "| Absent:",
-                report[
-                    "summary"
-                ][
-                    "absent"
-                ],
-
+                report["summary"]["absent"],
                 "| Late:",
-                report[
-                    "summary"
-                ][
-                    "late"
-                ],
-
+                report["summary"]["late"],
                 "| Percentage:",
-                report[
-                    "summary"
-                ][
-                    "attendance_percentage"
-                ]
+                report["summary"]["attendance_percentage"]
             )
 
-            for session in report[
-                "sessions"
-            ]:
+            for session in report["sessions"]:
 
                 print(
                     "   Session",
-                    session[
-                        "session_number"
-                    ],
-
+                    session["session_number"],
                     "| ID:",
-                    session[
-                        "session_id"
-                    ],
-
+                    session["session_id"],
                     "| Date:",
-                    session[
-                        "attendance_date"
-                    ],
-
+                    session["attendance_date"],
                     "| Present:",
-                    session[
-                        "present"
-                    ],
-
+                    session["present"],
                     "| Absent:",
-                    session[
-                        "absent"
-                    ],
-
+                    session["absent"],
                     "| Late:",
-                    session[
-                        "late"
-                    ],
-
+                    session["late"],
                     "| Students:",
                     len(
-                        session[
-                            "students"
-                        ]
-                    )
+                        session["students"]
+                    ),
+                    "| Classroom:",
+                    session["classroom_length"],
+                    "x",
+                    session["classroom_width"]
                 )
 
         print(

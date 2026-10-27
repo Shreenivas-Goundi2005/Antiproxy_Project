@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from database import get_db_connection
+from utils.auth import token_required
 
 import secrets
 from datetime import datetime
@@ -45,10 +46,41 @@ def auto_close_expired_sessions(cursor):
 
 
 # ============================================================
+# HELPER: FIND AUTHENTICATED FACULTY
+# ============================================================
+
+def get_authenticated_faculty(cursor, user_id):
+    """
+    Finds the faculty profile belonging to an authenticated
+    user account.
+    """
+
+    cursor.execute(
+        """
+        SELECT
+            f.id,
+            f.user_id,
+            f.faculty_id,
+            f.full_name
+        FROM faculty f
+        INNER JOIN users u
+            ON u.id = f.user_id
+        WHERE f.user_id = %s
+          AND u.role = 'faculty'
+        LIMIT 1
+        """,
+        (user_id,)
+    )
+
+    return cursor.fetchone()
+
+
+# ============================================================
 # START ATTENDANCE SESSION
 # ============================================================
 
 @session_bp.route("/sessions/start", methods=["POST"])
+@token_required
 def start_session():
 
     db = None
@@ -56,7 +88,20 @@ def start_session():
 
     try:
 
-        data = request.get_json()
+        # ----------------------------------------------------
+        # AUTHENTICATION AND ROLE VALIDATION
+        # ----------------------------------------------------
+
+        authenticated_user = request.auth_user
+
+        if str(authenticated_user.get("role", "")).lower() != "faculty":
+
+            return jsonify({
+                "success": False,
+                "message": "Only authenticated faculty can start attendance"
+            }), 403
+
+        data = request.get_json(silent=True)
 
         if not data:
             return jsonify({
@@ -83,7 +128,6 @@ def start_session():
         allowed_latitude = data.get("allowed_latitude")
         allowed_longitude = data.get("allowed_longitude")
 
-        # NEW:
         # Classroom dimensions in meters.
         classroom_length = data.get("classroom_length")
         classroom_width = data.get("classroom_width")
@@ -143,8 +187,9 @@ def start_session():
         ):
             return jsonify({
                 "success": False,
-                "message":
+                "message": (
                     "allowed_latitude and allowed_longitude are required"
+                )
             }), 400
 
         # ----------------------------------------------------
@@ -170,6 +215,7 @@ def start_session():
         try:
 
             faculty_user_id = int(faculty_user_id)
+            semester = int(semester)
 
             allowed_latitude = float(allowed_latitude)
             allowed_longitude = float(allowed_longitude)
@@ -177,11 +223,48 @@ def start_session():
             classroom_length = float(classroom_length)
             classroom_width = float(classroom_width)
 
+            authenticated_user_id = int(
+                authenticated_user["user_id"]
+            )
+
         except (TypeError, ValueError):
 
             return jsonify({
                 "success": False,
                 "message": "Invalid numeric value"
+            }), 400
+
+        # ----------------------------------------------------
+        # VERIFY FACULTY ACCOUNT OWNERSHIP
+        # ----------------------------------------------------
+
+        if faculty_user_id != authenticated_user_id:
+
+            return jsonify({
+                "success": False,
+                "message": (
+                    "You cannot start a session for another faculty member"
+                )
+            }), 403
+
+        # ----------------------------------------------------
+        # VALIDATE SEMESTER AND DIVISION
+        # ----------------------------------------------------
+
+        if semester < 1 or semester > 12:
+
+            return jsonify({
+                "success": False,
+                "message": "Semester must be between 1 and 12"
+            }), 400
+
+        division = str(division).strip().upper()
+
+        if not division:
+
+            return jsonify({
+                "success": False,
+                "message": "Division is required"
             }), 400
 
         # ----------------------------------------------------
@@ -210,16 +293,14 @@ def start_session():
 
             return jsonify({
                 "success": False,
-                "message":
-                    "classroom_length must be greater than 0"
+                "message": "classroom_length must be greater than 0"
             }), 400
 
         if classroom_width <= 0:
 
             return jsonify({
                 "success": False,
-                "message":
-                    "classroom_width must be greater than 0"
+                "message": "classroom_width must be greater than 0"
             }), 400
 
         # Prevent unrealistic classroom dimensions.
@@ -227,16 +308,14 @@ def start_session():
 
             return jsonify({
                 "success": False,
-                "message":
-                    "classroom_length cannot exceed 500 meters"
+                "message": "classroom_length cannot exceed 500 meters"
             }), 400
 
         if classroom_width > 500:
 
             return jsonify({
                 "success": False,
-                "message":
-                    "classroom_width cannot exceed 500 meters"
+                "message": "classroom_width cannot exceed 500 meters"
             }), 400
 
         # ----------------------------------------------------
@@ -283,9 +362,10 @@ def start_session():
 
                 return jsonify({
                     "success": False,
-                    "message":
+                    "message": (
                         "Invalid date or time format. "
                         "Use YYYY-MM-DD and HH:MM or HH:MM:SS."
+                    )
                 }), 400
 
         # ----------------------------------------------------
@@ -296,8 +376,9 @@ def start_session():
 
             return jsonify({
                 "success": False,
-                "message":
+                "message": (
                     "Session end time must be later than start time"
+                )
             }), 400
 
         # ----------------------------------------------------
@@ -310,8 +391,7 @@ def start_session():
 
             return jsonify({
                 "success": False,
-                "message":
-                    "Cannot create a session for a previous date"
+                "message": "Cannot create a session for a previous date"
             }), 400
 
         if (
@@ -321,8 +401,7 @@ def start_session():
 
             return jsonify({
                 "success": False,
-                "message":
-                    "Session end time has already passed"
+                "message": "Session end time has already passed"
             }), 400
 
         # ----------------------------------------------------
@@ -342,26 +421,13 @@ def start_session():
         db.commit()
 
         # ----------------------------------------------------
-        # FIND FACULTY
+        # FIND AUTHENTICATED FACULTY
         # ----------------------------------------------------
 
-        cursor.execute(
-            """
-            SELECT
-                f.id,
-                f.user_id,
-                f.faculty_id,
-                f.full_name
-            FROM faculty f
-            INNER JOIN users u
-                ON u.id = f.user_id
-            WHERE f.user_id = %s
-              AND u.role = 'faculty'
-            """,
-            (faculty_user_id,)
+        faculty = get_authenticated_faculty(
+            cursor,
+            authenticated_user_id
         )
-
-        faculty = cursor.fetchone()
 
         if not faculty:
 
@@ -369,6 +435,56 @@ def start_session():
                 "success": False,
                 "message": "Faculty account not found"
             }), 404
+
+        # ----------------------------------------------------
+        # VERIFY ACCEPTED SUBJECT ASSIGNMENT
+        # ----------------------------------------------------
+
+        cursor.execute(
+            """
+            SELECT
+                a.id AS assignment_id,
+                a.faculty_id,
+                a.subject_id,
+                a.semester,
+                a.division,
+                a.status,
+                s.subject_code,
+                s.subject_name,
+                s.semester AS subject_semester
+            FROM faculty_subject_assignments a
+            INNER JOIN subjects s
+                ON s.id = a.subject_id
+            WHERE a.faculty_id = %s
+              AND s.subject_code = %s
+              AND s.subject_name = %s
+              AND s.semester = %s
+              AND a.semester = %s
+              AND UPPER(a.division) = %s
+              AND a.status = 'Accepted'
+            LIMIT 1
+            """,
+            (
+                faculty["id"],
+                str(subject_code).strip(),
+                str(subject_name).strip(),
+                semester,
+                semester,
+                division
+            )
+        )
+
+        accepted_assignment = cursor.fetchone()
+
+        if not accepted_assignment:
+
+            return jsonify({
+                "success": False,
+                "message": (
+                    "You cannot start attendance without an accepted "
+                    "assignment for this exact subject, semester and division"
+                )
+            }), 403
 
         # ----------------------------------------------------
         # CHECK ACTIVE SESSION
@@ -394,10 +510,10 @@ def start_session():
 
             return jsonify({
                 "success": False,
-                "message":
-                    "Faculty already has an active attendance session",
-                "session_id":
-                    existing_session["id"]
+                "message": (
+                    "Faculty already has an active attendance session"
+                ),
+                "session_id": existing_session["id"]
             }), 409
 
         # ----------------------------------------------------
@@ -454,10 +570,10 @@ def start_session():
             (
                 faculty["id"],
                 str(class_name).strip(),
-                str(subject_name).strip(),
-                str(subject_code).strip(),
-                str(semester).strip(),
-                str(division).strip(),
+                accepted_assignment["subject_name"],
+                accepted_assignment["subject_code"],
+                str(semester),
+                division,
                 parsed_date,
                 parsed_start_time,
                 parsed_end_time,
@@ -470,7 +586,6 @@ def start_session():
 
                 classroom_length,
                 classroom_width,
-
                 qr_token
             )
         )
@@ -487,66 +602,47 @@ def start_session():
 
             "success": True,
 
-            "message":
-                "Attendance session started successfully",
+            "message": "Attendance session started successfully",
 
             "session": {
 
                 "id": session_id,
 
-                "faculty_id":
-                    faculty["id"],
+                "faculty_id": faculty["id"],
 
-                "faculty_user_id":
-                    faculty["user_id"],
+                "faculty_user_id": faculty["user_id"],
 
-                "faculty_code":
-                    faculty["faculty_id"],
+                "faculty_code": faculty["faculty_id"],
 
-                "faculty_name":
-                    faculty["full_name"],
+                "faculty_name": faculty["full_name"],
 
-                "class_name":
-                    str(class_name).strip(),
+                "class_name": str(class_name).strip(),
 
-                "subject_name":
-                    str(subject_name).strip(),
+                "subject_name": accepted_assignment["subject_name"],
 
-                "subject_code":
-                    str(subject_code).strip(),
+                "subject_code": accepted_assignment["subject_code"],
 
-                "semester":
-                    str(semester).strip(),
+                "semester": str(semester),
 
-                "division":
-                    str(division).strip(),
+                "division": division,
 
-                "attendance_date":
-                    str(parsed_date),
+                "attendance_date": str(parsed_date),
 
-                "start_time":
-                    str(parsed_start_time),
+                "start_time": str(parsed_start_time),
 
-                "end_time":
-                    str(parsed_end_time),
+                "end_time": str(parsed_end_time),
 
-                "allowed_latitude":
-                    allowed_latitude,
+                "allowed_latitude": allowed_latitude,
 
-                "allowed_longitude":
-                    allowed_longitude,
+                "allowed_longitude": allowed_longitude,
 
-                "classroom_length":
-                    classroom_length,
+                "classroom_length": classroom_length,
 
-                "classroom_width":
-                    classroom_width,
+                "classroom_width": classroom_width,
 
-                "qr_token":
-                    qr_token,
+                "qr_token": qr_token,
 
-                "status":
-                    "active"
+                "status": "active"
             }
 
         }), 201
@@ -556,12 +652,12 @@ def start_session():
         if db:
             db.rollback()
 
+        print("Start session error:", error)
+
         return jsonify({
             "success": False,
-            "message":
-                "Could not start attendance session",
-            "error":
-                str(error)
+            "message": "Could not start attendance session",
+            "error": str(error)
         }), 500
 
     finally:
@@ -581,6 +677,7 @@ def start_session():
     "/sessions/<int:session_id>/close",
     methods=["POST"]
 )
+@token_required
 def close_session(session_id):
 
     db = None
@@ -588,9 +685,42 @@ def close_session(session_id):
 
     try:
 
+        # ----------------------------------------------------
+        # AUTHENTICATION AND ROLE VALIDATION
+        # ----------------------------------------------------
+
+        authenticated_user = request.auth_user
+
+        if str(authenticated_user.get("role", "")).lower() != "faculty":
+
+            return jsonify({
+                "success": False,
+                "message": "Only faculty can close attendance sessions"
+            }), 403
+
         db = get_db_connection()
 
         cursor = db.cursor(dictionary=True)
+
+        # ----------------------------------------------------
+        # FIND AUTHENTICATED FACULTY
+        # ----------------------------------------------------
+
+        faculty = get_authenticated_faculty(
+            cursor,
+            authenticated_user["user_id"]
+        )
+
+        if not faculty:
+
+            return jsonify({
+                "success": False,
+                "message": "Faculty account not found"
+            }), 404
+
+        # ----------------------------------------------------
+        # FIND SESSION
+        # ----------------------------------------------------
 
         cursor.execute(
             """
@@ -624,87 +754,89 @@ def close_session(session_id):
 
             return jsonify({
                 "success": False,
-                "message":
-                    "Attendance session not found"
+                "message": "Attendance session not found"
             }), 404
+
+        # ----------------------------------------------------
+        # VERIFY SESSION OWNERSHIP
+        # ----------------------------------------------------
+
+        if int(session["faculty_id"]) != int(faculty["id"]):
+
+            return jsonify({
+                "success": False,
+                "message": (
+                    "You cannot close another faculty member's session"
+                )
+            }), 403
 
         if session["status"] == "closed":
 
             return jsonify({
                 "success": False,
-                "message":
-                    "Attendance session is already closed",
-                "session_id":
-                    session_id
+                "message": "Attendance session is already closed",
+                "session_id": session_id
             }), 409
+
+        # ----------------------------------------------------
+        # CLOSE SESSION
+        # ----------------------------------------------------
 
         cursor.execute(
             """
             UPDATE attendance_sessions
             SET status = 'closed'
             WHERE id = %s
+              AND faculty_id = %s
             """,
-            (session_id,)
+            (session_id, faculty["id"])
         )
 
         db.commit()
+
+        # ----------------------------------------------------
+        # SUCCESS
+        # ----------------------------------------------------
 
         return jsonify({
 
             "success": True,
 
-            "message":
-                "Attendance session closed successfully",
+            "message": "Attendance session closed successfully",
 
             "session": {
 
-                "id":
-                    session["id"],
+                "id": session["id"],
 
-                "faculty_id":
-                    session["faculty_id"],
+                "faculty_id": session["faculty_id"],
 
-                "class_name":
-                    session["class_name"],
+                "class_name": session["class_name"],
 
-                "subject_name":
-                    session["subject_name"],
+                "subject_name": session["subject_name"],
 
-                "subject_code":
-                    session["subject_code"],
+                "subject_code": session["subject_code"],
 
-                "semester":
-                    session["semester"],
+                "semester": session["semester"],
 
-                "division":
-                    session["division"],
+                "division": session["division"],
 
-                "attendance_date":
-                    str(session["attendance_date"]),
+                "attendance_date": str(session["attendance_date"]),
 
-                "start_time":
-                    str(session["start_time"]),
+                "start_time": str(session["start_time"]),
 
-                "end_time":
-                    str(session["end_time"]),
+                "end_time": str(session["end_time"]),
 
-                "allowed_latitude":
-                    float(session["allowed_latitude"]),
+                "allowed_latitude": float(session["allowed_latitude"]),
 
-                "allowed_longitude":
-                    float(session["allowed_longitude"]),
+                "allowed_longitude": float(session["allowed_longitude"]),
 
-                "classroom_length":
-                    float(session["classroom_length"]),
+                "classroom_length": float(session["classroom_length"]),
 
-                "classroom_width":
-                    float(session["classroom_width"]),
+                "classroom_width": float(session["classroom_width"]),
 
-                "qr_token":
-                    session["qr_token"],
+                "qr_token": session["qr_token"],
 
-                "status":
-                    "closed"
+                "status": "closed"
             }
 
         }), 200
@@ -714,12 +846,12 @@ def close_session(session_id):
         if db:
             db.rollback()
 
+        print("Close session error:", error)
+
         return jsonify({
             "success": False,
-            "message":
-                "Could not close attendance session",
-            "error":
-                str(error)
+            "message": "Could not close attendance session",
+            "error": str(error)
         }), 500
 
     finally:
@@ -739,12 +871,39 @@ def close_session(session_id):
     "/sessions/active/<int:faculty_user_id>",
     methods=["GET"]
 )
+@token_required
 def get_active_session(faculty_user_id):
 
     db = None
     cursor = None
 
     try:
+
+        # ----------------------------------------------------
+        # AUTHENTICATION AND ROLE VALIDATION
+        # ----------------------------------------------------
+
+        authenticated_user = request.auth_user
+
+        if str(authenticated_user.get("role", "")).lower() != "faculty":
+
+            return jsonify({
+                "success": False,
+                "message": "Only faculty can retrieve active sessions"
+            }), 403
+
+        # ----------------------------------------------------
+        # VERIFY REQUESTED ACCOUNT OWNERSHIP
+        # ----------------------------------------------------
+
+        if int(authenticated_user["user_id"]) != faculty_user_id:
+
+            return jsonify({
+                "success": False,
+                "message": (
+                    "You cannot access another faculty member's session"
+                )
+            }), 403
 
         db = get_db_connection()
 
@@ -755,33 +914,19 @@ def get_active_session(faculty_user_id):
         db.commit()
 
         # ----------------------------------------------------
-        # FIND FACULTY
+        # FIND AUTHENTICATED FACULTY
         # ----------------------------------------------------
 
-        cursor.execute(
-            """
-            SELECT
-                f.id,
-                f.user_id,
-                f.faculty_id,
-                f.full_name
-            FROM faculty f
-            INNER JOIN users u
-                ON u.id = f.user_id
-            WHERE f.user_id = %s
-              AND u.role = 'faculty'
-            """,
-            (faculty_user_id,)
+        faculty = get_authenticated_faculty(
+            cursor,
+            authenticated_user["user_id"]
         )
-
-        faculty = cursor.fetchone()
 
         if not faculty:
 
             return jsonify({
                 "success": False,
-                "message":
-                    "Faculty account not found"
+                "message": "Faculty account not found"
             }), 404
 
         # ----------------------------------------------------
@@ -827,6 +972,10 @@ def get_active_session(faculty_user_id):
                 "session": None
             }), 200
 
+        # ----------------------------------------------------
+        # SUCCESS
+        # ----------------------------------------------------
+
         return jsonify({
 
             "success": True,
@@ -835,62 +984,43 @@ def get_active_session(faculty_user_id):
 
             "session": {
 
-                "id":
-                    session["id"],
+                "id": session["id"],
 
-                "faculty_id":
-                    session["faculty_id"],
+                "faculty_id": session["faculty_id"],
 
-                "faculty_user_id":
-                    faculty["user_id"],
+                "faculty_user_id": faculty["user_id"],
 
-                "faculty_code":
-                    faculty["faculty_id"],
+                "faculty_code": faculty["faculty_id"],
 
-                "faculty_name":
-                    faculty["full_name"],
+                "faculty_name": faculty["full_name"],
 
-                "class_name":
-                    session["class_name"],
+                "class_name": session["class_name"],
 
-                "subject_name":
-                    session["subject_name"],
+                "subject_name": session["subject_name"],
 
-                "subject_code":
-                    session["subject_code"],
+                "subject_code": session["subject_code"],
 
-                "semester":
-                    session["semester"],
+                "semester": session["semester"],
 
-                "division":
-                    session["division"],
+                "division": session["division"],
 
-                "attendance_date":
-                    str(session["attendance_date"]),
+                "attendance_date": str(session["attendance_date"]),
 
-                "start_time":
-                    str(session["start_time"]),
+                "start_time": str(session["start_time"]),
 
-                "end_time":
-                    str(session["end_time"]),
+                "end_time": str(session["end_time"]),
 
-                "allowed_latitude":
-                    float(session["allowed_latitude"]),
+                "allowed_latitude": float(session["allowed_latitude"]),
 
-                "allowed_longitude":
-                    float(session["allowed_longitude"]),
+                "allowed_longitude": float(session["allowed_longitude"]),
 
-                "classroom_length":
-                    float(session["classroom_length"]),
+                "classroom_length": float(session["classroom_length"]),
 
-                "classroom_width":
-                    float(session["classroom_width"]),
+                "classroom_width": float(session["classroom_width"]),
 
-                "qr_token":
-                    session["qr_token"],
+                "qr_token": session["qr_token"],
 
-                "status":
-                    session["status"]
+                "status": session["status"]
             }
 
         }), 200
@@ -900,12 +1030,12 @@ def get_active_session(faculty_user_id):
         if db:
             db.rollback()
 
+        print("Get active session error:", error)
+
         return jsonify({
             "success": False,
-            "message":
-                "Could not retrieve active session",
-            "error":
-                str(error)
+            "message": "Could not retrieve active session",
+            "error": str(error)
         }), 500
 
     finally:

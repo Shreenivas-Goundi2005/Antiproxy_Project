@@ -116,14 +116,19 @@ def login():
             "message": "Request data is required"
         }), 400
 
-    username = data.get("username")
+    # Accept Employee ID for faculty login while preserving
+    # compatibility with existing student and admin clients.
+    username = (
+        data.get("employee_id")
+        or data.get("username")
+        or data.get("login_id")
+    )
     password = data.get("password")
 
     if not username or not password:
-
         return jsonify({
             "success": False,
-            "message": "Username and password are required"
+            "message": "Employee ID/username and password are required"
         }), 400
 
     connection = None
